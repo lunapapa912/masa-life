@@ -1,7 +1,7 @@
 {
-  "name": "MASA LIFE",
-  "short_name": "MASA LIFE",
-  "description": "仕事・健康・投資・暮らしをひとつに",
+  "name": "MASA OS",
+  "short_name": "MASA OS",
+  "description": "健康・投資・仕事・暮らしをひとつに",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

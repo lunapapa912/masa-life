@@ -6,60 +6,116 @@
 <meta name="theme-color" content="#111827">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="MASA LIFE">
+<meta name="apple-mobile-web-app-title" content="MASA OS">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>MASA LIFE</title>
+<title>MASA OS</title>
 <style>
-:root{--bg:#f3f5f8;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--blue:#1769e0;--green:#16833d;--amber:#b7791f;--red:#b42318}
-*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
-header{padding:18px 16px 12px;background:linear-gradient(135deg,#111827,#263750);color:#fff;position:sticky;top:0;z-index:20}
+:root{
+  --bg:#f3f5f8;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;
+  --blue:#1769e0;--green:#16833d;--amber:#b7791f;--red:#b42318;--navy:#111827;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{min-height:100vh}
+header{
+  padding:18px 16px 12px;background:linear-gradient(135deg,#111827,#263750);
+  color:#fff;position:sticky;top:0;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.12)
+}
 h1{margin:0;font-size:24px}.sub{font-size:12px;opacity:.78;margin-top:4px}
-main{max-width:980px;margin:auto;padding:14px}.hidden{display:none!important}
-.card{background:var(--card);border:1px solid var(--line);border-radius:19px;padding:16px;margin-bottom:13px;box-shadow:0 6px 20px rgba(20,30,50,.05)}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:700px){.grid{grid-template-columns:1fr}}
-.module{min-height:136px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer}.icon{font-size:32px}
-h2{font-size:18px;margin:8px 0 5px}h3{font-size:14px;margin:12px 0 5px}.muted{font-size:13px;color:var(--muted)}
-.badge{display:inline-block;font-size:11px;font-weight:800;border-radius:99px;padding:5px 9px;background:#eaf2ff;color:#0d55bd}
-.toprow,.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.big{font-size:26px;font-weight:850}
-.pill{display:inline-block;padding:5px 9px;border-radius:99px;background:#eaf2ff;color:#0d55bd;font-size:12px;font-weight:800}
-button{border:0;border-radius:12px;padding:10px 14px;font-weight:800}.back{background:#e5e7eb}.primary{background:var(--blue);color:#fff;width:100%;margin-top:12px}.danger{background:#fee4e2;color:var(--red)}
-.tabs{display:flex;gap:8px;overflow:auto;margin-bottom:13px}.tabs button{background:#e9edf5;white-space:nowrap}.tabs .on{background:var(--blue);color:#fff}.tab{display:none}.tab.on{display:block}
+main{max-width:980px;margin:auto;padding:14px 14px 90px}
+.hidden{display:none!important}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:13px;
+  box-shadow:0 6px 20px rgba(20,30,50,.05)
+}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:720px){.grid,.grid3{grid-template-columns:1fr}}
+.module{min-height:136px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer}
+.module:active{transform:scale(.99)}.icon{font-size:32px}
+h2{font-size:18px;margin:8px 0 5px}h3{font-size:14px;margin:12px 0 5px}
+.muted{font-size:13px;color:var(--muted)}.small{font-size:12px}
+.badge{display:inline-block;font-size:11px;font-weight:800;border-radius:999px;padding:5px 9px;background:#eaf2ff;color:#0d55bd}
+.toprow,.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.big{font-size:26px;font-weight:850}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#eaf2ff;color:#0d55bd;font-size:12px;font-weight:800}
+button{border:0;border-radius:12px;padding:10px 14px;font-weight:800;font-size:14px}
+button:active{opacity:.8}.back{background:#e5e7eb}.primary{background:var(--blue);color:#fff;width:100%;margin-top:12px}
+.secondary{background:#e9edf5;color:#111827}.danger{background:#fee4e2;color:var(--red)}
+.tabs{display:flex;gap:8px;overflow:auto;margin-bottom:13px;padding-bottom:2px}
+.tabs button{background:#e9edf5;white-space:nowrap}.tabs .on{background:var(--blue);color:#fff}
+.tab{display:none}.tab.on{display:block}
 .progress{height:12px;background:#e8ebf0;border-radius:20px;overflow:hidden}.progress>div{height:100%;background:var(--green);width:0}
-label.ck{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line)}label.ck:last-child{border-bottom:0}
-input,select,textarea{width:100%;font-size:16px;padding:10px;border:1px solid #dfe3ea;border-radius:11px;background:white}input[type=checkbox]{width:20px;height:20px}
-.notice{background:#fff6d8;border:1px solid #eed575;border-radius:12px;padding:12px}.section-title{font-size:18px;margin:0 0 11px}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-canvas{width:100%;height:220px}.navdate{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin-top:10px}.navdate button{background:#e9edf5}
-.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.kpi{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:11px}.kpi .n{font-size:22px;font-weight:850}
-.item{padding:11px 0;border-bottom:1px solid var(--line)}.item:last-child{border-bottom:0}.item-title{font-weight:800}.right{float:right}
-.bottom-nav{position:sticky;bottom:0;display:flex;gap:7px;overflow:auto;background:rgba(243,245,248,.94);backdrop-filter:blur(10px);padding:10px 0 4px}.bottom-nav button{min-width:86px;background:#e9edf5}.bottom-nav .on{background:#111827;color:white}
-.small{font-size:12px}
+label.ck{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line)}
+label.ck:last-child{border-bottom:0}
+input,select,textarea{
+  width:100%;font-size:16px;padding:11px;border:1px solid #dfe3ea;border-radius:12px;background:white;margin-top:6px
+}
+input[type=checkbox]{width:20px;height:20px;margin:0}
+.notice{background:#fff6d8;border:1px solid #eed575;border-radius:12px;padding:12px}
+.info{background:#eef6ff;border:1px solid #b8d5ff;border-radius:12px;padding:12px}
+.section-title{font-size:18px;margin:0 0 11px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+canvas{width:100%;height:220px}
+.navdate{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin-top:10px}
+.navdate button{background:#e9edf5}
+.kpi{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:11px}
+.kpi .n{font-size:22px;font-weight:850}
+.item{padding:11px 0;border-bottom:1px solid var(--line)}.item:last-child{border-bottom:0}
+.item-title{font-weight:800}.right{float:right}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.toolbar button{background:#e9edf5}
+.bottomnav{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(6,1fr);padding:7px 6px calc(7px + env(safe-area-inset-bottom))
+}
+.bottomnav button{background:transparent;padding:7px 3px;font-size:11px;color:#4b5563}
+.bottomnav button.on{color:var(--blue)}
+.bottomnav .emoji{display:block;font-size:20px;margin-bottom:2px}
+.statline{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}
+.statline:last-child{border-bottom:0}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 </style>
 </head>
 <body>
-<header><h1>MASA LIFE</h1><div class="sub">仕事・健康・投資・暮らしをひとつに</div></header>
+<header><h1>MASA OS</h1><div class="sub">健康・投資・仕事・暮らしをひとつに</div></header>
 <main>
 <section id="home">
-<div class="card"><div class="row"><div><div class="muted">今日も整えていこう</div><div class="big">雅史さん</div></div><span class="badge">Complete 1.0</span></div></div>
-<div class="grid">
-<div class="card module" data-open="body"><div><div class="icon">🏋️</div><h2>Body</h2><div class="muted">112日計画・食事・運動・記録・グラフ</div></div><span class="badge">完成</span></div>
-<div class="card module" data-open="stock"><div><div class="icon">📈</div><h2>Stock</h2><div class="muted">銘柄・注文計画・売買日誌・振り返り</div></div><span class="badge">利用可能</span></div>
-<div class="card module" data-open="clinic"><div><div class="icon">🏥</div><h2>Clinic</h2><div class="muted">問診練習・鑑別メモ・学習ノート</div></div><span class="badge">個人学習用</span></div>
-<div class="card module" data-open="care"><div><div class="icon">🏡</div><h2>Care</h2><div class="muted">機能訓練案・企画・タスク管理</div></div><span class="badge">利用可能</span></div>
-<div class="card module" data-open="life"><div><div class="icon">👨‍👩‍👧</div><h2>Life</h2><div class="muted">買い物・予定・ToDo・メモ</div></div><span class="badge">利用可能</span></div>
-<div class="card module" data-open="settings"><div><div class="icon">⚙️</div><h2>Settings</h2><div class="muted">バックアップ・復元・初期設定</div></div><span class="badge">重要</span></div>
-</div>
+  <div class="card">
+    <div class="row">
+      <div><div class="muted">今日も整えていこう</div><div class="big" id="helloName">雅史さん</div></div>
+      <span class="badge">Complete 1.0</span>
+    </div>
+    <div id="homeSummary" style="margin-top:12px"></div>
+  </div>
+  <div class="grid">
+    <div class="card module" data-open="body"><div><div class="icon">🏋️</div><h2>Body</h2><div class="muted">112日計画・献立・運動・記録・グラフ</div></div><span class="badge">完成</span></div>
+    <div class="card module" data-open="stock"><div><div class="icon">📈</div><h2>Stock</h2><div class="muted">銘柄・売買計画・売買日誌・損益</div></div><span class="badge">利用可能</span></div>
+    <div class="card module" data-open="clinic"><div><div class="icon">🏥</div><h2>Clinic</h2><div class="muted">問診練習・鑑別・学習ノート</div></div><span class="badge">学習用</span></div>
+    <div class="card module" data-open="care"><div><div class="icon">🏡</div><h2>Care</h2><div class="muted">機能訓練・企画・タスク管理</div></div><span class="badge">利用可能</span></div>
+    <div class="card module" data-open="life"><div><div class="icon">👨‍👩‍👧</div><h2>Life</h2><div class="muted">予定・ToDo・買い物・生活メモ</div></div><span class="badge">利用可能</span></div>
+    <div class="card module" data-open="settings"><div><div class="icon">⚙️</div><h2>Settings</h2><div class="muted">初期設定・バックアップ・復元</div></div><span class="badge">重要</span></div>
+  </div>
 </section>
 
 <section id="app" class="hidden">
-<div class="toprow"><button class="back" id="backHome">← ホーム</button><div class="big" id="moduleTitle" style="font-size:20px"></div></div>
-<div id="moduleContent"></div>
+  <div class="toprow"><button class="back" id="backHome">← ホーム</button><div class="big" id="moduleTitle" style="font-size:20px"></div></div>
+  <div id="moduleContent"></div>
 </section>
 </main>
 
+<nav class="bottomnav">
+  <button data-bottom="home" class="on"><span class="emoji">🏠</span>ホーム</button>
+  <button data-bottom="body"><span class="emoji">🏋️</span>Body</button>
+  <button data-bottom="stock"><span class="emoji">📈</span>Stock</button>
+  <button data-bottom="clinic"><span class="emoji">🏥</span>Clinic</button>
+  <button data-bottom="care"><span class="emoji">🏡</span>Care</button>
+  <button data-bottom="life"><span class="emoji">📝</span>Life</button>
+</nav>
+
 <script>
-const meals=[
+const MEALS=[
 ["納豆ご飯＋卵＋味噌汁","鶏むね照り焼き弁当","鶏むね照り焼き・キャベツ・冷奴","無糖ヨーグルト"],
 ["オートミール＋ヨーグルト＋バナナ","豚しゃぶ弁当","豚しゃぶサラダ・豆腐","ゆで卵＋果物"],
 ["ご飯＋目玉焼き＋納豆","鮭弁当","鮭のレンジ蒸し・小松菜・味噌汁","無糖ヨーグルト"],
@@ -70,7 +126,7 @@ const meals=[
 ["トースト＋卵＋バナナ","豚丼弁当","豚丼・レタス・味噌汁","ゆで卵"],
 ["納豆ご飯＋ヨーグルト","鶏南蛮風弁当","鶏南蛮風・キャベツ","果物"],
 ["オートミール＋卵","そぼろ弁当","脂質控えめカレー・サラダ","無糖ヨーグルト"]];
-const trains=[
+const TRAIN=[
 ["上半身＋腹","腕立て4セット／ダンベル床プレス4×10／ショルダープレス3×10／レッグレイズ3×12"],
 ["回復","20〜30分歩行＋股関節・胸郭ストレッチ"],
 ["下半身＋腹","ゴブレットスクワット4×12／ブルガリアンSQ3×10／ダンベルRDL4×10／プランク3×45秒"],
@@ -78,46 +134,252 @@ const trains=[
 ["背中・腕＋腹","ワンハンドロー4×12／カール3×12／キックバック3×12／ロシアンツイスト3×20"],
 ["テニス or 全身","テニス2時間。ない週はスクワット・腕立て・ローを各3セット"],
 ["休養・準備","30分散歩＋写真・腹囲・作り置き"]];
-const shopItems=["鶏むね肉 2kg","豚肉 合計1kg","鮭 4切","卵 20個","納豆 10パック","豆腐 6丁","無糖ヨーグルト 2個","牛乳または豆乳 2本","キャベツ 1玉","レタス 2玉","小松菜 2袋","ほうれん草 2袋","もやし 4袋","トマト 6個","にんじん 4本","玉ねぎ 6個","バナナ 2房","オートミール 1袋","米・調味料"];
-let S=JSON.parse(localStorage.getItem("masaLifeComplete")||'{"body":{"records":{},"checks":{},"shopping":{},"start":"2026-08-05","goalH":65.5,"goalW":52,"offset":0},"stocks":[],"trades":[],"clinic":[],"care":[],"todos":[],"notes":[],"settings":{"name":"雅史"}}');
-const save=()=>localStorage.setItem("masaLifeComplete",JSON.stringify(S));
+const SHOP=["鶏むね肉 2kg","豚肉 合計1kg","鮭 4切","卵 20個","納豆 10パック","豆腐 6丁","無糖ヨーグルト 2個","牛乳または豆乳 2本","キャベツ 1玉","レタス 2玉","小松菜 2袋","ほうれん草 2袋","もやし 4袋","トマト 6個","にんじん 4本","玉ねぎ 6個","バナナ 2房","オートミール 1袋","米・調味料"];
+const DEFAULT={
+  version:"1.0.0",
+  profile:{name:"雅史",wifeName:"妻"},
+  body:{records:{},checks:{},shopping:{},start:"2026-08-05",goalH:65.5,goalW:52,offset:0},
+  stocks:[],trades:[],clinic:[],care:[],todos:[],notes:[],calendar:[]
+};
 const $=id=>document.getElementById(id);
-function bodyInfo(){let b=S.body,s=new Date(b.start+"T00:00:00"),n=new Date();n.setHours(0,0,0,0);let base=Math.max(0,Math.min(111,Math.floor((n-s)/86400000)));let i=Math.max(0,Math.min(111,base+b.offset));let dt=new Date(s);dt.setDate(dt.getDate()+i);let wd=dt.getDay()==0?6:dt.getDay()-1;return{i,day:i+1,date:dt.toLocaleDateString("sv-SE"),phase:Math.floor(i/28)+1,meal:meals[i%10],train:trains[wd],base}}
-function renderModule(name){$("home").classList.add("hidden");$("app").classList.remove("hidden");$("moduleTitle").textContent={body:"Body",stock:"Stock",clinic:"Clinic",care:"Care",life:"Life",settings:"Settings"}[name];({body:renderBody,stock:renderStock,clinic:renderClinic,care:renderCare,life:renderLife,settings:renderSettings}[name])()}
+function loadState(){
+  try{
+    const raw=localStorage.getItem("masaOS");
+    if(!raw)return structuredClone(DEFAULT);
+    const parsed=JSON.parse(raw);
+    return Object.assign(structuredClone(DEFAULT),parsed,{body:Object.assign(structuredClone(DEFAULT.body),parsed.body||{}),profile:Object.assign({},DEFAULT.profile,parsed.profile||{})});
+  }catch(e){return structuredClone(DEFAULT)}
+}
+let S=loadState();
+const save=()=>{localStorage.setItem("masaOS",JSON.stringify(S));renderHomeSummary()};
+function iso(d){return d.toLocaleDateString("sv-SE")}
+function bodyInfo(){
+  let b=S.body,s=new Date(b.start+"T00:00:00"),n=new Date();n.setHours(0,0,0,0);
+  let base=Math.max(0,Math.min(111,Math.floor((n-s)/86400000)));
+  let i=Math.max(0,Math.min(111,base+b.offset));
+  let dt=new Date(s);dt.setDate(dt.getDate()+i);
+  let wd=dt.getDay()==0?6:dt.getDay()-1;
+  return{i,day:i+1,date:iso(dt),phase:Math.floor(i/28)+1,meal:MEALS[i%10],train:TRAIN[wd],base}
+}
+function renderHomeSummary(){
+  $("helloName").textContent=(S.profile.name||"雅史")+"さん";
+  const x=bodyInfo(),r=S.body.records[x.date]||{},c=S.body.checks[x.date]||{};
+  const pct=Math.round(Object.values(c).filter(Boolean).length/7*100);
+  const pending=S.todos.filter(t=>!t.done).length;
+  $("homeSummary").innerHTML=`
+    <div class="statline"><span>Body</span><strong>Day ${x.day}/112・達成率 ${pct}%</strong></div>
+    <div class="statline"><span>今日の体重</span><strong>${r.hw||"未入力"} kg</strong></div>
+    <div class="statline"><span>ToDo</span><strong>${pending}件</strong></div>
+    <div class="statline"><span>登録銘柄</span><strong>${S.stocks.length}件</strong></div>`;
+}
+function setBottom(name){
+  document.querySelectorAll("[data-bottom]").forEach(b=>b.classList.toggle("on",b.dataset.bottom===name));
+}
+function goHome(){
+  $("app").classList.add("hidden");$("home").classList.remove("hidden");setBottom("home");renderHomeSummary()
+}
+function renderModule(name){
+  $("home").classList.add("hidden");$("app").classList.remove("hidden");
+  $("moduleTitle").textContent={body:"Body",stock:"Stock",clinic:"Clinic",care:"Care",life:"Life",settings:"Settings"}[name];
+  setBottom(name);
+  ({body:renderBody,stock:renderStock,clinic:renderClinic,care:renderCare,life:renderLife,settings:renderSettings}[name])();
+}
 document.querySelectorAll("[data-open]").forEach(x=>x.onclick=()=>renderModule(x.dataset.open));
-$("backHome").onclick=()=>{$("app").classList.add("hidden");$("home").classList.remove("hidden")};
+document.querySelectorAll("[data-bottom]").forEach(x=>x.onclick=()=>x.dataset.bottom==="home"?goHome():renderModule(x.dataset.bottom));
+$("backHome").onclick=goHome;
 
 function renderBody(){
-let x=bodyInfo(),m=x.meal,b=S.body;b.checks[x.date]=b.checks[x.date]||{};let done=Object.values(b.checks[x.date]).filter(Boolean).length,p=Math.round(done/7*100);
-$("moduleContent").innerHTML=`
-<div class="tabs"><button class="on" data-btab="today">今日</button><button data-btab="record">記録</button><button data-btab="shop">買い物</button><button data-btab="progress">進捗</button><button data-btab="plan">計画</button></div>
-<div id="b_today" class="tab on">
-<div class="card"><div class="row"><div><span class="pill">Phase ${x.phase}</span><h2>${x.date}</h2></div><div class="big">Day ${x.day}</div></div>
-<div class="navdate"><button id="prev">← 前日</button><button id="todayGo">今日へ</button><button id="next">翌日 →</button></div><div class="progress" style="margin-top:12px"><div style="width:${p}%"></div></div><div class="muted">${done}/7 完了（${p}%）</div></div>
-<div class="grid"><div class="card"><h2>今日の食事</h2><h3>朝</h3>${m[0]}<h3>弁当</h3>${m[1]}<h3>夜</h3>${m[2]}<h3>間食</h3>${m[3]}</div>
-<div class="card"><h2>夫婦の量</h2><h3>夫</h3>主菜180〜220g／ご飯 朝150g・昼180g・夜120〜150g<h3>妻</h3>主菜120〜150g／ご飯 朝100g・昼120〜150g・夜80〜120g<h3>水分</h3>夫2.2〜2.7L／妻1.6〜2.0L</div></div>
-<div class="card"><h2>今日の運動</h2><span class="pill">${x.train[0]}</span><p>${x.train[1]}</p></div>
-<div class="card"><h2>チェック</h2><div id="bodyChecks"></div></div></div>
-<div id="b_record" class="tab"><div class="card"><h2>${x.date} の記録</h2><div class="grid">
-<input id="hw" placeholder="夫 体重kg" type="number" step=".1"><input id="hf" placeholder="夫 体脂肪%" type="number" step=".1"><input id="hwa" placeholder="夫 腹囲cm" type="number" step=".1">
-<input id="ww" placeholder="妻 体重kg" type="number" step=".1"><input id="wwa" placeholder="妻 ウエストcm" type="number" step=".1"><input id="steps" placeholder="歩数" type="number"><input id="sleep" placeholder="睡眠時間" type="number" step=".1">
-<select id="shift"><option>早番 6:00〜15:30</option><option>中番 9:00〜18:00</option><option>遅番 10:30〜19:30</option><option>休み</option></select></div><textarea id="bmemo" rows="4" placeholder="メモ"></textarea><button class="primary" id="saveBody">保存</button></div></div>
-<div id="b_shop" class="tab"><div class="card"><h2>松源 10日分買い物</h2><div id="bodyShop"></div></div><div class="card"><h2>作り置き60分</h2><ol><li>米を小分け冷凍</li><li>鶏むねを3用途に分ける</li><li>豚肉を2用途に分ける</li><li>ゆで卵8〜10個</li><li>葉物をレンジ加熱</li><li>弁当主菜2〜3日分のみ冷蔵</li></ol></div></div>
-<div id="b_progress" class="tab"><div class="card"><h2>夫の体重</h2><canvas id="hc"></canvas></div><div class="card"><h2>妻の体重</h2><canvas id="wc"></canvas></div><div class="card"><h2>停滞判定</h2><div id="plateau" class="notice"></div></div></div>
-<div id="b_plan" class="tab"><div class="card"><h2>16週間計画</h2><table><tr><th>期間</th><th>内容</th></tr><tr><td>1〜4週</td><td>フォームと習慣化</td></tr><tr><td>5〜8週</td><td>各セット1〜2回追加</td></tr><tr><td>9〜12週</td><td>重量またはテンポ追加</td></tr><tr><td>13〜16週</td><td>休憩短縮・腹筋追加</td></tr></table></div></div>`;
-let r=b.records[x.date]||{};["hw","hf","hwa","ww","wwa","steps","sleep","shift"].forEach(k=>{if($(k))$(k).value=r[k]||""});$("bmemo").value=r.memo||"";
-let wrap=$("bodyChecks");["朝食","弁当","夕食","間食","水分","運動","8000歩"].forEach(v=>{let e=document.createElement("label");e.className="ck";e.innerHTML=`<input type=checkbox ${b.checks[x.date][v]?"checked":""}><span>${v}</span>`;e.firstChild.onchange=z=>{b.checks[x.date][v]=z.target.checked;save();renderBody()};wrap.appendChild(e)});
-let key=x.date.slice(0,7);b.shopping[key]=b.shopping[key]||{};shopItems.forEach(v=>{let e=document.createElement("label");e.className="ck";e.innerHTML=`<input type=checkbox ${b.shopping[key][v]?"checked":""}><span>${v}</span>`;e.firstChild.onchange=z=>{b.shopping[key][v]=z.target.checked;save()};$("bodyShop").appendChild(e)});
-document.querySelectorAll("[data-btab]").forEach(btn=>btn.onclick=()=>{document.querySelectorAll("[data-btab],#moduleContent .tab").forEach(y=>y.classList.remove("on"));btn.classList.add("on");$("b_"+btn.dataset.btab).classList.add("on");if(btn.dataset.btab==="progress")drawProgress()});
-$("prev").onclick=()=>{b.offset=Math.max(-x.base,b.offset-1);save();renderBody()};$("next").onclick=()=>{b.offset=Math.min(111-x.base,b.offset+1);save();renderBody()};$("todayGo").onclick=()=>{b.offset=0;save();renderBody()};
-$("saveBody").onclick=()=>{let q={};["hw","hf","hwa","ww","wwa","steps","sleep","shift"].forEach(k=>q[k]=$(k).value);q.memo=$("bmemo").value;b.records[x.date]=q;save();alert("保存しました")};
-function drawProgress(){draw("hc","hw");draw("wc","ww");let a=Object.entries(b.records).sort().filter(z=>z[1].hw).map(z=>+z[1].hw);$("plateau").textContent=a.length<14?"14日分たまると判定します。":((a.slice(-14,-7).reduce((s,v)=>s+v,0)/7)-(a.slice(-7).reduce((s,v)=>s+v,0)/7)<.2?"停滞気味。夜のご飯を20〜30g減らすか歩行を10分追加。":"順調です。変更せず継続。")}
-function draw(id,key){let c=$(id),ctx=c.getContext("2d"),w=c.clientWidth,h=220,d=devicePixelRatio||1;c.width=w*d;c.height=h*d;ctx.scale(d,d);let vals=Object.entries(b.records).sort().filter(z=>z[1][key]).map(z=>+z[1][key]);ctx.strokeStyle="#dfe3ea";ctx.beginPath();ctx.moveTo(30,10);ctx.lineTo(30,190);ctx.lineTo(w-10,190);ctx.stroke();if(vals.length<2){ctx.fillStyle="#6b7280";ctx.fillText("2件以上で表示",45,50);return}let min=Math.min(...vals)-1,max=Math.max(...vals)+1;ctx.strokeStyle="#1769e0";ctx.lineWidth=2;ctx.beginPath();vals.forEach((v,i)=>{let xx=30+i*(w-45)/(vals.length-1),yy=10+(max-v)*180/(max-min);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)});ctx.stroke()}}
-function renderStock(){$("moduleContent").innerHTML=`<div class="card"><h2>銘柄メモ</h2><input id="stName" placeholder="銘柄名・コード"><input id="stPlan" placeholder="買値・利確・損切り計画" style="margin-top:8px"><textarea id="stMemo" placeholder="根拠・注意点" rows="3"></textarea><button class="primary" id="addStock">追加</button></div><div class="card"><h2>登録銘柄</h2><div id="stockList"></div></div>`;renderList();$("addStock").onclick=()=>{if(!$("stName").value)return;S.stocks.unshift({id:Date.now(),name:$("stName").value,plan:$("stPlan").value,memo:$("stMemo").value,date:new Date().toLocaleDateString("sv-SE")});save();renderStock()};function renderList(){$("stockList").innerHTML=S.stocks.length?S.stocks.map(x=>`<div class=item><div class=item-title>${x.name}<span class="right muted">${x.date}</span></div><div>${x.plan}</div><div class=muted>${x.memo}</div><button class=danger onclick="delStock(${x.id})">削除</button></div>`).join(""):"まだありません"}}window.delStock=id=>{S.stocks=S.stocks.filter(x=>x.id!==id);save();renderStock()}
-function renderClinic(){$("moduleContent").innerHTML=`<div class="notice">個人学習用。患者氏名・連絡先・写真などの個人情報は入力しないでください。</div><div class="card"><h2>症例・鑑別ノート</h2><input id="clTitle" placeholder="例：股関節前面痛"><textarea id="clBody" rows="6" placeholder="問診、評価、鑑別、確認事項"></textarea><button class="primary" id="addCl">保存</button></div><div class="card"><h2>ノート</h2><div id="clList"></div></div>`;$("clList").innerHTML=S.clinic.map(x=>`<div class=item><div class=item-title>${x.title}</div><div>${x.body}</div><button class=danger onclick="delCl(${x.id})">削除</button></div>`).join("")||"まだありません";$("addCl").onclick=()=>{if(!$("clTitle").value)return;S.clinic.unshift({id:Date.now(),title:$("clTitle").value,body:$("clBody").value});save();renderClinic()}}window.delCl=id=>{S.clinic=S.clinic.filter(x=>x.id!==id);save();renderClinic()}
-function renderCare(){$("moduleContent").innerHTML=`<div class="card"><h2>企画・機能訓練アイデア</h2><input id="caTitle" placeholder="タイトル"><textarea id="caBody" rows="5" placeholder="目的・方法・必要物品・評価方法"></textarea><button class="primary" id="addCa">保存</button></div><div class="card"><h2>アイデア一覧</h2><div id="caList"></div></div>`;$("caList").innerHTML=S.care.map(x=>`<div class=item><div class=item-title>${x.title}</div><div>${x.body}</div><button class=danger onclick="delCa(${x.id})">削除</button></div>`).join("")||"まだありません";$("addCa").onclick=()=>{if(!$("caTitle").value)return;S.care.unshift({id:Date.now(),title:$("caTitle").value,body:$("caBody").value});save();renderCare()}}window.delCa=id=>{S.care=S.care.filter(x=>x.id!==id);save();renderCare()}
-function renderLife(){$("moduleContent").innerHTML=`<div class="card"><h2>ToDo</h2><input id="todoText" placeholder="やること"><input id="todoDate" type="date" style="margin-top:8px"><button class="primary" id="addTodo">追加</button><div id="todoList"></div></div><div class="card"><h2>生活メモ</h2><textarea id="lifeNote" rows="5" placeholder="買い物・予定・共有メモ"></textarea><button class="primary" id="saveNote">保存</button><div id="noteList"></div></div>`;show();$("addTodo").onclick=()=>{if(!$("todoText").value)return;S.todos.unshift({id:Date.now(),text:$("todoText").value,date:$("todoDate").value,done:false});save();renderLife()};$("saveNote").onclick=()=>{if(!$("lifeNote").value)return;S.notes.unshift({id:Date.now(),text:$("lifeNote").value,date:new Date().toLocaleDateString("sv-SE")});save();renderLife()};function show(){$("todoList").innerHTML=S.todos.map(x=>`<label class=ck><input type=checkbox ${x.done?"checked":""} onchange="toggleTodo(${x.id})"><span>${x.text} <span class=muted>${x.date||""}</span></span></label>`).join("")||"まだありません";$("noteList").innerHTML=S.notes.map(x=>`<div class=item>${x.text}<div class=muted>${x.date}</div></div>`).join("")||"まだありません"}}window.toggleTodo=id=>{let x=S.todos.find(x=>x.id===id);if(x)x.done=!x.done;save();renderLife()}
-function renderSettings(){$("moduleContent").innerHTML=`<div class="card"><h2>Body設定</h2><label>開始日</label><input id="setStart" type="date" value="${S.body.start}"><label>夫目標体重</label><input id="setGH" type="number" step=".1" value="${S.body.goalH}"><label>妻目標体重</label><input id="setGW" type="number" step=".1" value="${S.body.goalW}"><button class="primary" id="saveSet">保存</button></div><div class="card"><h2>バックアップ</h2><button class="primary" id="exportAll">全データを書き出す</button><input id="importAll" type="file" accept=".json" style="margin-top:10px"><div class="muted">端末変更やSafariデータ削除に備え、月1回保存推奨。</div></div><div class="card"><h2>注意</h2><div class="notice">この版のデータはこのiPhone内に保存されます。Clinicには患者個人情報を保存しないでください。</div></div>`;$("saveSet").onclick=()=>{S.body.start=$("setStart").value;S.body.goalH=+$("setGH").value;S.body.goalW=+$("setGW").value;S.body.offset=0;save();alert("保存しました")};$("exportAll").onclick=()=>{let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:"application/json"}));a.download="MASA_LIFE_ALL_backup.json";a.click()};$("importAll").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{localStorage.setItem("masaLifeComplete",r.result);location.reload()};r.readAsText(f)}}
+  const x=bodyInfo(),m=x.meal,b=S.body;
+  b.checks[x.date]=b.checks[x.date]||{};
+  const done=Object.values(b.checks[x.date]).filter(Boolean).length,pct=Math.round(done/7*100);
+  $("moduleContent").innerHTML=`
+  <div class="tabs">
+    <button class="on" data-btab="today">今日</button><button data-btab="record">記録</button>
+    <button data-btab="shop">買い物</button><button data-btab="progress">進捗</button><button data-btab="plan">計画</button>
+  </div>
+  <div id="b_today" class="tab on">
+    <div class="card">
+      <div class="row"><div><span class="pill">Phase ${x.phase}</span><h2>${x.date}</h2></div><div class="big">Day ${x.day}</div></div>
+      <div class="navdate"><button id="prev">← 前日</button><button id="todayGo">今日へ</button><button id="next">翌日 →</button></div>
+      <div class="progress" style="margin-top:12px"><div style="width:${pct}%"></div></div><div class="muted">${done}/7 完了（${pct}%）</div>
+    </div>
+    <div class="grid">
+      <div class="card"><h2>今日の食事</h2><h3>朝</h3>${m[0]}<h3>弁当</h3>${m[1]}<h3>夜</h3>${m[2]}<h3>間食</h3>${m[3]}</div>
+      <div class="card"><h2>夫婦の量</h2><h3>夫</h3>主菜180〜220g／ご飯 朝150g・昼180g・夜120〜150g<h3>妻</h3>主菜120〜150g／ご飯 朝100g・昼120〜150g・夜80〜120g<h3>水分</h3>夫2.2〜2.7L／妻1.6〜2.0L</div>
+    </div>
+    <div class="card"><h2>今日の運動</h2><span class="pill">${x.train[0]}</span><p>${x.train[1]}</p></div>
+    <div class="card"><h2>チェック</h2><div id="bodyChecks"></div></div>
+  </div>
+  <div id="b_record" class="tab">
+    <div class="card"><h2>${x.date} の記録</h2>
+      <div class="grid">
+        <input id="hw" placeholder="夫 体重kg" type="number" step=".1"><input id="hf" placeholder="夫 体脂肪%" type="number" step=".1">
+        <input id="hwa" placeholder="夫 腹囲cm" type="number" step=".1"><input id="ww" placeholder="妻 体重kg" type="number" step=".1">
+        <input id="wwa" placeholder="妻 ウエストcm" type="number" step=".1"><input id="steps" placeholder="歩数" type="number">
+        <input id="sleep" placeholder="睡眠時間" type="number" step=".1">
+        <select id="shift"><option>早番 6:00〜15:30</option><option>中番 9:00〜18:00</option><option>遅番 10:30〜19:30</option><option>休み</option></select>
+      </div>
+      <textarea id="bmemo" rows="4" placeholder="メモ"></textarea><button class="primary" id="saveBody">保存</button>
+    </div>
+  </div>
+  <div id="b_shop" class="tab">
+    <div class="card"><h2>松源 10日分買い物</h2><div id="bodyShop"></div></div>
+    <div class="card"><h2>作り置き60分</h2><ol><li>米を小分け冷凍</li><li>鶏むねを3用途に分ける</li><li>豚肉を2用途に分ける</li><li>ゆで卵8〜10個</li><li>葉物をレンジ加熱</li><li>弁当主菜2〜3日分のみ冷蔵</li></ol></div>
+  </div>
+  <div id="b_progress" class="tab">
+    <div class="card"><h2>夫の体重</h2><canvas id="hc"></canvas></div>
+    <div class="card"><h2>妻の体重</h2><canvas id="wc"></canvas></div>
+    <div class="card"><h2>停滞判定</h2><div id="plateau" class="notice"></div></div>
+  </div>
+  <div id="b_plan" class="tab">
+    <div class="card"><h2>16週間計画</h2><table><tr><th>期間</th><th>内容</th></tr>
+    <tr><td>1〜4週</td><td>フォームと習慣化</td></tr><tr><td>5〜8週</td><td>各セット1〜2回追加</td></tr>
+    <tr><td>9〜12週</td><td>重量またはテンポ追加</td></tr><tr><td>13〜16週</td><td>休憩短縮・腹筋追加</td></tr></table></div>
+  </div>`;
+  const r=b.records[x.date]||{};
+  ["hw","hf","hwa","ww","wwa","steps","sleep","shift"].forEach(k=>{if($(k))$(k).value=r[k]||""});
+  $("bmemo").value=r.memo||"";
+  ["朝食","弁当","夕食","間食","水分","運動","8000歩"].forEach(v=>{
+    const e=document.createElement("label");e.className="ck";
+    e.innerHTML=`<input type=checkbox ${b.checks[x.date][v]?"checked":""}><span>${v}</span>`;
+    e.firstChild.onchange=z=>{b.checks[x.date][v]=z.target.checked;save();renderBody()};
+    $("bodyChecks").appendChild(e)
+  });
+  const key=x.date.slice(0,7);b.shopping[key]=b.shopping[key]||{};
+  SHOP.forEach(v=>{
+    const e=document.createElement("label");e.className="ck";
+    e.innerHTML=`<input type=checkbox ${b.shopping[key][v]?"checked":""}><span>${v}</span>`;
+    e.firstChild.onchange=z=>{b.shopping[key][v]=z.target.checked;save()};
+    $("bodyShop").appendChild(e)
+  });
+  document.querySelectorAll("[data-btab]").forEach(btn=>btn.onclick=()=>{
+    document.querySelectorAll("[data-btab],#moduleContent .tab").forEach(y=>y.classList.remove("on"));
+    btn.classList.add("on");$("b_"+btn.dataset.btab).classList.add("on");
+    if(btn.dataset.btab==="progress")drawProgress()
+  });
+  $("prev").onclick=()=>{b.offset=Math.max(-x.base,b.offset-1);save();renderBody()};
+  $("next").onclick=()=>{b.offset=Math.min(111-x.base,b.offset+1);save();renderBody()};
+  $("todayGo").onclick=()=>{b.offset=0;save();renderBody()};
+  $("saveBody").onclick=()=>{
+    const q={};["hw","hf","hwa","ww","wwa","steps","sleep","shift"].forEach(k=>q[k]=$(k).value);q.memo=$("bmemo").value;
+    b.records[x.date]=q;save();alert("保存しました")
+  };
+  function drawProgress(){
+    draw("hc","hw");draw("wc","ww");
+    const a=Object.entries(b.records).sort().filter(z=>z[1].hw).map(z=>+z[1].hw);
+    $("plateau").textContent=a.length<14?"14日分たまると判定します。":
+      ((a.slice(-14,-7).reduce((s,v)=>s+v,0)/7)-(a.slice(-7).reduce((s,v)=>s+v,0)/7)<.2?
+      "停滞気味。夜のご飯を20〜30g減らすか歩行を10分追加。":"順調です。変更せず継続。")
+  }
+  function draw(id,key){
+    const c=$(id),ctx=c.getContext("2d"),w=c.clientWidth,h=220,d=devicePixelRatio||1;
+    c.width=w*d;c.height=h*d;ctx.scale(d,d);ctx.clearRect(0,0,w,h);
+    const vals=Object.entries(b.records).sort().filter(z=>z[1][key]).map(z=>+z[1][key]);
+    ctx.strokeStyle="#dfe3ea";ctx.beginPath();ctx.moveTo(30,10);ctx.lineTo(30,190);ctx.lineTo(w-10,190);ctx.stroke();
+    if(vals.length<2){ctx.fillStyle="#6b7280";ctx.fillText("2件以上で表示",45,50);return}
+    const min=Math.min(...vals)-1,max=Math.max(...vals)+1;ctx.strokeStyle="#1769e0";ctx.lineWidth=2;ctx.beginPath();
+    vals.forEach((v,i)=>{let xx=30+i*(w-45)/(vals.length-1),yy=10+(max-v)*180/(max-min);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)});ctx.stroke()
+  }
+}
+function renderStock(){
+  $("moduleContent").innerHTML=`
+  <div class="tabs"><button class="on" data-stab="watch">銘柄</button><button data-stab="trade">売買</button><button data-stab="summary">集計</button></div>
+  <div id="s_watch" class="tab on">
+    <div class="card"><h2>銘柄・注文計画</h2><input id="stName" placeholder="銘柄名・コード"><input id="stEntry" placeholder="買値"><input id="stTake" placeholder="利確"><input id="stStop" placeholder="損切り"><textarea id="stMemo" rows="3" placeholder="根拠・注意点"></textarea><button class="primary" id="addStock">追加</button></div>
+    <div class="card"><h2>登録銘柄</h2><div id="stockList"></div></div>
+  </div>
+  <div id="s_trade" class="tab">
+    <div class="card"><h2>売買日誌</h2><input id="trName" placeholder="銘柄"><select id="trSide"><option>買い→売り</option><option>空売り→買戻し</option></select><input id="trQty" type="number" placeholder="株数"><input id="trBuy" type="number" step=".1" placeholder="買値/建値"><input id="trSell" type="number" step=".1" placeholder="売値/決済値"><textarea id="trMemo" rows="3" placeholder="振り返り"></textarea><button class="primary" id="addTrade">保存</button></div>
+    <div class="card"><h2>履歴</h2><div id="tradeList"></div></div>
+  </div>
+  <div id="s_summary" class="tab"><div class="card"><h2>損益集計</h2><div id="tradeSummary"></div></div></div>`;
+  function showStocks(){
+    $("stockList").innerHTML=S.stocks.length?S.stocks.map(x=>`<div class=item><div class=item-title>${x.name}<span class="right muted">${x.date}</span></div><div>買値 ${x.entry||"-"} / 利確 ${x.take||"-"} / 損切り ${x.stop||"-"}</div><div class=muted>${x.memo||""}</div><button class=danger onclick="delStock(${x.id})">削除</button></div>`).join(""):"まだありません"
+  }
+  function showTrades(){
+    $("tradeList").innerHTML=S.trades.length?S.trades.map(x=>`<div class=item><div class=item-title>${x.name}<span class="right ${x.pnl>=0?"":"danger"}">${x.pnl.toLocaleString()}円</span></div><div>${x.side}・${x.qty}株・${x.buy}→${x.sell}</div><div class=muted>${x.memo||""}</div><button class=danger onclick="delTrade(${x.id})">削除</button></div>`).join(""):"まだありません"
+  }
+  function showSummary(){
+    const total=S.trades.reduce((a,b)=>a+b.pnl,0),wins=S.trades.filter(x=>x.pnl>0).length;
+    $("tradeSummary").innerHTML=`<div class="statline"><span>累計損益</span><strong>${total.toLocaleString()}円</strong></div><div class="statline"><span>取引数</span><strong>${S.trades.length}</strong></div><div class="statline"><span>勝率</span><strong>${S.trades.length?Math.round(wins/S.trades.length*100):0}%</strong></div>`
+  }
+  showStocks();showTrades();showSummary();
+  $("addStock").onclick=()=>{
+    if(!$("stName").value)return;
+    S.stocks.unshift({id:Date.now(),name:$("stName").value,entry:$("stEntry").value,take:$("stTake").value,stop:$("stStop").value,memo:$("stMemo").value,date:iso(new Date())});save();renderStock()
+  };
+  $("addTrade").onclick=()=>{
+    if(!$("trName").value)return;
+    const qty=+$("trQty").value||0,buy=+$("trBuy").value||0,sell=+$("trSell").value||0,side=$("trSide").value;
+    const pnl=Math.round((side.startsWith("買い")?(sell-buy):(buy-sell))*qty);
+    S.trades.unshift({id:Date.now(),name:$("trName").value,side,qty,buy,sell,memo:$("trMemo").value,pnl,date:iso(new Date())});save();renderStock()
+  };
+  document.querySelectorAll("[data-stab]").forEach(btn=>btn.onclick=()=>{
+    document.querySelectorAll("[data-stab],#moduleContent .tab").forEach(y=>y.classList.remove("on"));
+    btn.classList.add("on");$("s_"+btn.dataset.stab).classList.add("on")
+  })
+}
+window.delStock=id=>{S.stocks=S.stocks.filter(x=>x.id!==id);save();renderStock()};
+window.delTrade=id=>{S.trades=S.trades.filter(x=>x.id!==id);save();renderStock()};
+
+function renderClinic(){
+  $("moduleContent").innerHTML=`
+  <div class="notice">個人学習用。患者氏名・連絡先・写真などの個人情報は入力しないでください。</div>
+  <div class="card"><h2>症例・鑑別ノート</h2><input id="clTitle" placeholder="例：股関節前面痛"><select id="clCat"><option>腰</option><option>頸肩</option><option>股関節</option><option>膝</option><option>足関節</option><option>上肢</option><option>神経</option><option>その他</option></select><textarea id="clBody" rows="7" placeholder="問診、評価、鑑別、確認事項"></textarea><button class="primary" id="addCl">保存</button></div>
+  <div class="card"><h2>ノート</h2><div id="clList"></div></div>`;
+  $("clList").innerHTML=S.clinic.length?S.clinic.map(x=>`<div class=item><div class=item-title>${x.title}<span class=right>${x.cat}</span></div><div>${x.body}</div><button class=danger onclick="delCl(${x.id})">削除</button></div>`).join(""):"まだありません";
+  $("addCl").onclick=()=>{if(!$("clTitle").value)return;S.clinic.unshift({id:Date.now(),title:$("clTitle").value,cat:$("clCat").value,body:$("clBody").value,date:iso(new Date())});save();renderClinic()}
+}
+window.delCl=id=>{S.clinic=S.clinic.filter(x=>x.id!==id);save();renderClinic()};
+
+function renderCare(){
+  $("moduleContent").innerHTML=`
+  <div class="card"><h2>企画・機能訓練アイデア</h2><input id="caTitle" placeholder="タイトル"><select id="caCat"><option>機能訓練</option><option>DIY</option><option>新店舗</option><option>運営</option><option>レク</option><option>その他</option></select><textarea id="caBody" rows="6" placeholder="目的・方法・必要物品・評価方法"></textarea><button class="primary" id="addCa">保存</button></div>
+  <div class="card"><h2>アイデア一覧</h2><div id="caList"></div></div>`;
+  $("caList").innerHTML=S.care.length?S.care.map(x=>`<div class=item><div class=item-title>${x.title}<span class=right>${x.cat}</span></div><div>${x.body}</div><button class=danger onclick="delCa(${x.id})">削除</button></div>`).join(""):"まだありません";
+  $("addCa").onclick=()=>{if(!$("caTitle").value)return;S.care.unshift({id:Date.now(),title:$("caTitle").value,cat:$("caCat").value,body:$("caBody").value,date:iso(new Date())});save();renderCare()}
+}
+window.delCa=id=>{S.care=S.care.filter(x=>x.id!==id);save();renderCare()};
+
+function renderLife(){
+  $("moduleContent").innerHTML=`
+  <div class="tabs"><button class="on" data-ltab="todo">ToDo</button><button data-ltab="calendar">予定</button><button data-ltab="note">メモ</button></div>
+  <div id="l_todo" class="tab on"><div class="card"><h2>ToDo</h2><input id="todoText" placeholder="やること"><input id="todoDate" type="date"><button class="primary" id="addTodo">追加</button><div id="todoList"></div></div></div>
+  <div id="l_calendar" class="tab"><div class="card"><h2>予定</h2><input id="calTitle" placeholder="予定"><input id="calDate" type="date"><input id="calTime" type="time"><button class="primary" id="addCal">追加</button><div id="calList"></div></div></div>
+  <div id="l_note" class="tab"><div class="card"><h2>生活メモ</h2><textarea id="lifeNote" rows="6" placeholder="買い物・共有メモ"></textarea><button class="primary" id="saveNote">保存</button><div id="noteList"></div></div></div>`;
+  function show(){
+    $("todoList").innerHTML=S.todos.length?S.todos.map(x=>`<label class=ck><input type=checkbox ${x.done?"checked":""} onchange="toggleTodo(${x.id})"><span>${x.text} <span class=muted>${x.date||""}</span></span></label>`).join(""):"まだありません";
+    $("calList").innerHTML=S.calendar.length?S.calendar.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).map(x=>`<div class=item><div class=item-title>${x.title}</div><div>${x.date} ${x.time||""}</div><button class=danger onclick="delCal(${x.id})">削除</button></div>`).join(""):"まだありません";
+    $("noteList").innerHTML=S.notes.length?S.notes.map(x=>`<div class=item>${x.text}<div class=muted>${x.date}</div><button class=danger onclick="delNote(${x.id})">削除</button></div>`).join(""):"まだありません"
+  }
+  show();
+  $("addTodo").onclick=()=>{if(!$("todoText").value)return;S.todos.unshift({id:Date.now(),text:$("todoText").value,date:$("todoDate").value,done:false});save();renderLife()};
+  $("addCal").onclick=()=>{if(!$("calTitle").value)return;S.calendar.unshift({id:Date.now(),title:$("calTitle").value,date:$("calDate").value,time:$("calTime").value});save();renderLife()};
+  $("saveNote").onclick=()=>{if(!$("lifeNote").value)return;S.notes.unshift({id:Date.now(),text:$("lifeNote").value,date:iso(new Date())});save();renderLife()};
+  document.querySelectorAll("[data-ltab]").forEach(btn=>btn.onclick=()=>{
+    document.querySelectorAll("[data-ltab],#moduleContent .tab").forEach(y=>y.classList.remove("on"));
+    btn.classList.add("on");$("l_"+btn.dataset.ltab).classList.add("on")
+  })
+}
+window.toggleTodo=id=>{let x=S.todos.find(x=>x.id===id);if(x)x.done=!x.done;save();renderLife()};
+window.delCal=id=>{S.calendar=S.calendar.filter(x=>x.id!==id);save();renderLife()};
+window.delNote=id=>{S.notes=S.notes.filter(x=>x.id!==id);save();renderLife()};
+
+function renderSettings(){
+  $("moduleContent").innerHTML=`
+  <div class="card"><h2>プロフィール</h2><label>名前</label><input id="setName" value="${S.profile.name||""}"><label>妻の表示名</label><input id="setWife" value="${S.profile.wifeName||""}"><button class="primary" id="saveProfile">保存</button></div>
+  <div class="card"><h2>Body設定</h2><label>開始日</label><input id="setStart" type="date" value="${S.body.start}"><label>夫目標体重</label><input id="setGH" type="number" step=".1" value="${S.body.goalH}"><label>妻目標体重</label><input id="setGW" type="number" step=".1" value="${S.body.goalW}"><button class="primary" id="saveSet">保存</button></div>
+  <div class="card"><h2>バックアップ</h2><button class="primary" id="exportAll">全データを書き出す</button><input id="importAll" type="file" accept=".json"><div class="muted">端末変更やSafariデータ削除に備え、月1回保存推奨。</div></div>
+  <div class="card"><h2>データ初期化</h2><button class="danger" id="resetAll">全データを削除</button></div>
+  <div class="card"><h2>注意</h2><div class="notice">この版のデータはこのiPhone内に保存されます。Clinicには患者個人情報を保存しないでください。</div></div>`;
+  $("saveProfile").onclick=()=>{S.profile.name=$("setName").value||"雅史";S.profile.wifeName=$("setWife").value||"妻";save();alert("保存しました")};
+  $("saveSet").onclick=()=>{S.body.start=$("setStart").value;S.body.goalH=+$("setGH").value;S.body.goalW=+$("setGW").value;S.body.offset=0;save();alert("保存しました")};
+  $("exportAll").onclick=()=>{let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:"application/json"}));a.download="MASA_OS_backup.json";a.click()};
+  $("importAll").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{localStorage.setItem("masaOS",r.result);location.reload()}catch(err){alert("読み込みに失敗しました")}};r.readAsText(f)};
+  $("resetAll").onclick=()=>{if(confirm("本当に全データを削除しますか？")){localStorage.removeItem("masaOS");location.reload()}}
+}
+renderHomeSummary();
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"))}
 </script>
-</body></html>
+</body>
+</html>
