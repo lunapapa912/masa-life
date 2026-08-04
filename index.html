@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MASA LIFE">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<title>MASA LIFE</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--accent:#111827;--blue:#1769e0;--green:#16833d}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+header{padding:20px 18px 12px;background:linear-gradient(135deg,#111827,#263449);color:#fff;position:sticky;top:0;z-index:10}
+h1{margin:0;font-size:24px}.sub{font-size:12px;opacity:.75;margin-top:4px}
+main{max-width:900px;margin:auto;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+@media(max-width:680px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:17px;box-shadow:0 6px 20px rgba(20,30,50,.05)}
+.module{cursor:pointer;min-height:150px;display:flex;flex-direction:column;justify-content:space-between}
+.module .icon{font-size:34px}.module h2{font-size:19px;margin:10px 0 4px}.muted{font-size:13px;color:var(--muted)}
+.badge{display:inline-block;font-size:11px;font-weight:800;border-radius:999px;padding:5px 9px;background:#eaf2ff;color:#0d55bd}
+.badge.dev{background:#f3f4f6;color:#6b7280}
+.hidden{display:none}
+.toprow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+button{border:0;border-radius:12px;padding:10px 14px;font-weight:800}
+.back{background:#e5e7eb;color:#111827}.primary{background:var(--blue);color:#fff;width:100%}
+.section-title{font-size:18px;margin:0 0 12px}
+.row{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.big{font-size:27px;font-weight:850}
+.pill{display:inline-block;padding:5px 9px;border-radius:99px;background:#eaf2ff;color:#0d55bd;font-size:12px;font-weight:800}
+.progress{height:12px;background:#e8ebf0;border-radius:20px;overflow:hidden}.progress>div{height:100%;background:var(--green)}
+label.ck{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line)}
+input,select,textarea{width:100%;font-size:16px;padding:10px;border:1px solid #dfe3ea;border-radius:11px}
+input[type=checkbox]{width:20px;height:20px}
+.tabs{display:flex;gap:8px;overflow:auto;margin-bottom:13px}.tabs button{background:#e9edf5;white-space:nowrap}.tabs .on{background:var(--blue);color:#fff}
+.tab{display:none}.tab.on{display:block}
+.notice{background:#fff6d8;border:1px solid #eed575;border-radius:12px;padding:12px}
+</style>
+</head>
+<body>
+<header><h1>MASA LIFE</h1><div class="sub">仕事・健康・投資・暮らしをひとつに</div></header>
+<main>
+<section id="home">
+  <div class="card" style="margin-bottom:14px">
+    <div class="row"><div><div class="muted">おはよう</div><div class="big">雅史さん</div></div><span class="badge">Life OS</span></div>
+  </div>
+  <div class="grid">
+    <div class="card module" data-open="body"><div><div class="icon">🏋️</div><h2>Body</h2><div class="muted">Project ABS112・体重・食事・運動</div></div><span class="badge">利用可能</span></div>
+    <div class="card module"><div><div class="icon">📈</div><h2>Stock</h2><div class="muted">銘柄管理・注文計画・振り返り</div></div><span class="badge dev">開発予定</span></div>
+    <div class="card module"><div><div class="icon">🏥</div><h2>Clinic</h2><div class="muted">問診・鑑別・治療計画・学習</div></div><span class="badge dev">開発予定</span></div>
+    <div class="card module"><div><div class="icon">🏡</div><h2>Care</h2><div class="muted">デイサービス機能訓練・記録</div></div><span class="badge dev">開発予定</span></div>
+    <div class="card module"><div><div class="icon">👨‍👩‍👧</div><h2>Life</h2><div class="muted">献立・買い物・家計・予定</div></div><span class="badge dev">開発予定</span></div>
+  </div>
+</section>
+
+<section id="body" class="hidden">
+  <div class="toprow"><button class="back" id="backHome">← ホーム</button><div class="big" style="font-size:20px">Body</div></div>
+  <div class="tabs">
+    <button class="on" data-tab="today">今日</button>
+    <button data-tab="record">記録</button>
+    <button data-tab="shop">買い物</button>
+    <button data-tab="training">運動</button>
+  </div>
+
+  <div id="today" class="tab on">
+    <div class="card" style="margin-bottom:13px"><div class="row"><div><span id="phase" class="pill"></span><h2 id="date" class="section-title"></h2></div><div id="day" class="big"></div></div><div class="progress"><div id="bar"></div></div><div id="barText" class="muted"></div></div>
+    <div class="grid">
+      <div class="card"><h2 class="section-title">今日の食事</h2><h3>朝</h3><div id="b"></div><h3>弁当</h3><div id="l"></div><h3>夜</h3><div id="d"></div><h3>間食</h3><div id="s"></div></div>
+      <div class="card"><h2 class="section-title">夫婦の量</h2><h3>夫</h3><div>主菜180〜220g／ご飯 朝150g・昼180g・夜120〜150g</div><h3>妻</h3><div>主菜120〜150g／ご飯 朝100g・昼120〜150g・夜80〜120g</div><h3>水分</h3><div>夫2.2〜2.7L／妻1.6〜2.0L</div></div>
+    </div>
+    <div class="card" style="margin-top:13px"><h2 class="section-title">今日の運動</h2><span id="tt" class="pill"></span><p id="td"></p></div>
+    <div class="card" style="margin-top:13px"><h2 class="section-title">チェック</h2><div id="checks"></div></div>
+  </div>
+
+  <div id="record" class="tab">
+    <div class="card"><h2 class="section-title">今日の記録</h2>
+      <div class="grid">
+        <div><label>夫 体重</label><input id="hw" type="number" step=".1"></div>
+        <div><label>夫 体脂肪</label><input id="hf" type="number" step=".1"></div>
+        <div><label>夫 腹囲</label><input id="hwa" type="number" step=".1"></div>
+        <div><label>妻 体重</label><input id="ww" type="number" step=".1"></div>
+        <div><label>妻 ウエスト</label><input id="wwa" type="number" step=".1"></div>
+        <div><label>歩数</label><input id="steps" type="number"></div>
+      </div>
+      <h3>メモ</h3><textarea id="memo"></textarea>
+      <button id="saveRec" class="primary">保存</button>
+    </div>
+  </div>
+
+  <div id="shop" class="tab">
+    <div class="card"><h2 class="section-title">5のつく日の買い物</h2><div class="muted">松源で10日分をまとめ買い</div><div id="shopList"></div></div>
+  </div>
+
+  <div id="training" class="tab">
+    <div class="card"><h2 class="section-title">16週間の進め方</h2>
+      <div class="notice">1〜4週はフォーム、5〜8週は回数、9〜12週は負荷、13〜16週は休憩短縮と腹筋追加。</div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+const meals=[
+["納豆ご飯＋卵＋味噌汁","鶏むね照り焼き弁当","鶏むね照り焼き・キャベツ・冷奴","無糖ヨーグルト"],
+["オートミール＋ヨーグルト＋バナナ","豚しゃぶ弁当","豚しゃぶサラダ・豆腐","ゆで卵＋果物"],
+["ご飯＋目玉焼き＋納豆","鮭弁当","鮭のレンジ蒸し・小松菜・味噌汁","無糖ヨーグルト"],
+["トースト＋卵＋ヨーグルト","鶏そぼろ弁当","親子丼・サラダ","プロテイン"],
+["納豆ご飯＋卵","豚の生姜焼き弁当","豚の生姜焼き・キャベツ","バナナ"],
+["オートミール＋牛乳＋卵","麻婆豆腐弁当","脂質控えめ麻婆豆腐・中華サラダ","無糖ヨーグルト"],
+["ご飯＋納豆＋味噌汁","鶏塩だれ弁当","鶏塩だれ・もやし・冷奴","プロテイン"],
+["トースト＋卵＋バナナ","豚丼弁当","豚丼・レタス・味噌汁","ゆで卵"],
+["納豆ご飯＋ヨーグルト","鶏南蛮風弁当","鶏南蛮風・キャベツ","果物"],
+["オートミール＋卵","そぼろ弁当","脂質控えめカレー・サラダ","無糖ヨーグルト"]];
+const tr=[
+["上半身＋腹","腕立て4セット／ダンベル床プレス4×10／ショルダープレス3×10／レッグレイズ3×12"],
+["回復","20〜30分歩行＋股関節・胸郭ストレッチ"],
+["下半身＋腹","ゴブレットスクワット4×12／ブルガリアンSQ3×10／ダンベルRDL4×10／プランク3×45秒"],
+["軽運動","8000歩＋サイドプランク3×30秒"],
+["背中・腕＋腹","ワンハンドロー4×12／カール3×12／キックバック3×12／ロシアンツイスト3×20"],
+["テニス or 全身","テニス2時間。ない週はスクワット・腕立て・ローを各3セット"],
+["休養・準備","30分散歩＋写真・腹囲・作り置き"]];
+const shop=["鶏むね肉 2kg","豚肉 合計1kg","鮭 4切","卵 20個","納豆 10パック","豆腐 6丁","無糖ヨーグルト 2個","キャベツ 1玉","レタス 2玉","小松菜 2袋","ほうれん草 2袋","もやし 4袋","トマト 6個","玉ねぎ 6個","バナナ 2房","オートミール 1袋","米・調味料"];
+let st=JSON.parse(localStorage.getItem("masaLife")||'{"records":{},"checks":{},"shop":{},"start":"2026-08-05"}');
+const $=id=>document.getElementById(id),save=()=>localStorage.setItem("masaLife",JSON.stringify(st));
+function info(){let s=new Date(st.start+"T00:00:00"),n=new Date();n.setHours(0,0,0,0);let i=Math.max(0,Math.min(111,Math.floor((n-s)/86400000)));let dt=new Date(s);dt.setDate(dt.getDate()+i);return{i,day:i+1,date:dt.toLocaleDateString("sv-SE"),phase:Math.floor(i/28)+1,meal:meals[i%10],train:tr[dt.getDay()==0?6:dt.getDay()-1]}}
+function render(){let x=info(),m=x.meal;$("phase").textContent="Phase "+x.phase;$("date").textContent=x.date;$("day").textContent="Day "+x.day;$("b").textContent=m[0];$("l").textContent=m[1];$("d").textContent=m[2];$("s").textContent=m[3];$("tt").textContent=x.train[0];$("td").textContent=x.train[1];$("checks").innerHTML="";st.checks[x.date]=st.checks[x.date]||{};["朝食","弁当","夕食","間食","水分","運動","8000歩"].forEach(v=>{let e=document.createElement("label");e.className="ck";e.innerHTML=`<input type=checkbox ${st.checks[x.date][v]?"checked":""}><span>${v}</span>`;e.firstChild.onchange=z=>{st.checks[x.date][v]=z.target.checked;save();barNow()};$("checks").appendChild(e)});barNow()}
+function barNow(){let x=info(),n=Object.values(st.checks[x.date]||{}).filter(Boolean).length,p=Math.round(n/7*100);$("bar").style.width=p+"%";$("barText").textContent=`${n}/7 完了（${p}%）`}
+function shopRender(){$("shopList").innerHTML="";let key=info().date.slice(0,7);st.shop[key]=st.shop[key]||{};shop.forEach(v=>{let e=document.createElement("label");e.className="ck";e.innerHTML=`<input type=checkbox ${st.shop[key][v]?"checked":""}><span>${v}</span>`;e.firstChild.onchange=z=>{st.shop[key][v]=z.target.checked;save()};$("shopList").appendChild(e)})}
+document.querySelector('[data-open="body"]').onclick=()=>{$("home").classList.add("hidden");$("body").classList.remove("hidden");render();shopRender()}
+$("backHome").onclick=()=>{$("body").classList.add("hidden");$("home").classList.remove("hidden")}
+document.querySelectorAll(".tabs button").forEach(btn=>btn.onclick=()=>{document.querySelectorAll(".tabs button,.tab").forEach(x=>x.classList.remove("on"));btn.classList.add("on");$(btn.dataset.tab).classList.add("on")})
+$("saveRec").onclick=()=>{let r={};["hw","hf","hwa","ww","wwa","steps","memo"].forEach(k=>r[k]=$(k).value);st.records[info().date]=r;save();alert("保存しました")}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"))}
+</script>
+</body>
+</html>
