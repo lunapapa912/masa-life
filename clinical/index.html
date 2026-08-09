@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17324d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MASA Clinical">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<title>MASA CLINICAL QUICK</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#20262e;--muted:#6b7480;--navy:#17324d;--line:#d9dee5;--red:#fff0f0;--green:#edf7f0;--blue:#eef4f8;--sand:#fbf5e8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;color:var(--ink)}
+.wrap{max-width:700px;margin:auto;padding:10px 10px 118px}.sticky{position:sticky;top:0;z-index:10;background:rgba(245,246,248,.95);backdrop-filter:blur(10px);padding:7px 0}
+h1{font-size:20px;margin:2px 0;color:var(--navy)}.sub{font-size:11px;color:var(--muted);line-height:1.45}.score{display:flex;gap:8px;align-items:center;margin-top:7px}.num{font-size:21px;font-weight:800;color:var(--navy)}.badge{font-size:11px;padding:5px 8px;border-radius:99px;background:var(--blue)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:10px;margin:8px 0}.card.missing{background:var(--red);border-color:#e2a2a2}
+.head{display:flex;justify-content:space-between;gap:6px;align-items:center;margin-bottom:7px}.head b{font-size:14px}.hint{font-size:10px;color:var(--muted)}
+input[type=text]{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:16px}.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{display:inline-flex;align-items:center}
+.chip input{display:none}.chip span{border:1px solid #cfd5dc;border-radius:999px;padding:7px 9px;font-size:12px;background:#fff;user-select:none}.chip input:checked+span{background:var(--navy);color:#fff;border-color:var(--navy)}
+.line{margin-top:7px}.line input{font-size:15px;padding:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.mini{font-size:10px;color:var(--muted);margin-bottom:3px}
+.notice{background:var(--sand);border:1px solid #ead9ae;border-radius:12px;padding:10px;font-size:12px;line-height:1.55}.miss{font-size:13px;line-height:1.7}.redtxt{color:#9b3030;font-weight:700}
+footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));z-index:20}.actions{max-width:700px;margin:auto;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:7px}
+button{border:0;border-radius:10px;padding:12px 5px;font-weight:750;font-size:13px}.primary{background:var(--navy);color:#fff}.secondary{background:#e9edf2}.danger{background:#f5dddd;color:#7b2222}
+@media(max-width:430px){.grid{grid-template-columns:1fr 1fr}.wrap{padding-left:8px;padding-right:8px}}
+</style></head>
+<body><div class="wrap">
+<div class="sticky"><h1>MASA CLINICAL QUICK</h1><div class="sub">カルテ感覚で短く。タップ中心。<b>赤い欄＝見ていない可能性</b>。</div><div class="score"><span class="num" id="score">0/8</span><span class="badge" id="badge">確認不足</span></div></div>
+
+<div class="card"><div class="head"><b>症例</b><span class="hint">個人情報は入れない</span></div><input id="case" type="text" placeholder="30M 右足関節痛 / 車降車時"></div>
+
+<div class="card req" data-id="chief"><div class="head"><b>① 主訴・再現動作</b><span class="hint">どこ・いつ・何で</span></div>
+<div class="chips">
+<label class="chip"><input type="checkbox" data-group="chief"><span>安静時</span></label><label class="chip"><input type="checkbox" data-group="chief"><span>荷重</span></label><label class="chip"><input type="checkbox" data-group="chief"><span>歩行</span></label><label class="chip"><input type="checkbox" data-group="chief"><span>立上り</span></label><label class="chip"><input type="checkbox" data-group="chief"><span>ROM</span></label><label class="chip"><input type="checkbox" data-group="chief"><span>スポーツ</span></label>
+</div><div class="line"><input id="chiefText" type="text" placeholder="例：前方裂隙 / 降車で接地時痛"></div></div>
+
+<div class="card req" data-id="problem"><div class="head"><b>② 仮説</b><span class="hint">第一候補＋鑑別</span></div>
+<div class="grid"><div><div class="mini">第一候補</div><input id="problem" type="text" placeholder="OLT?"></div><div><div class="mini">鑑別</div><input id="diff" type="text" placeholder="ATFL / 腓骨筋腱"></div></div></div>
+
+<div class="card req" data-id="exam"><div class="head"><b>③ 見た所見</b><span class="hint">タップ＋必要なら一言</span></div>
+<div class="chips">
+<label class="chip"><input type="checkbox" data-group="exam"><span>腫脹</span></label><label class="chip"><input type="checkbox" data-group="exam"><span>圧痛</span></label><label class="chip"><input type="checkbox" data-group="exam"><span>ROM</span></label><label class="chip"><input type="checkbox" data-group="exam"><span>筋力</span></label><label class="chip"><input type="checkbox" data-group="exam"><span>動作</span></label><label class="chip"><input type="checkbox" data-group="exam"><span>不安定性</span></label><label class="chip"><input type="checkbox" data-group="exam"><span>神経</span></label><label class="chip"><input type="checkbox" data-group="exam"><span>血管</span></label><label class="chip"><input type="checkbox" data-group="exam"><span>エコー</span></label>
+</div><div class="line"><input id="examText" type="text" placeholder="例：前方圧痛+ / 腫脹+ / 内反硬"></div></div>
+
+<div class="card req" data-id="target"><div class="head"><b>④ TODAY｜今日の狙い</b><span class="hint">1〜2個</span></div>
+<div class="chips">
+<label class="chip"><input type="checkbox" data-group="target"><span>疼痛↓</span></label><label class="chip"><input type="checkbox" data-group="target"><span>腫脹↓</span></label><label class="chip"><input type="checkbox" data-group="target"><span>ROM↑</span></label><label class="chip"><input type="checkbox" data-group="target"><span>筋力↑</span></label><label class="chip"><input type="checkbox" data-group="target"><span>安定性</span></label><label class="chip"><input type="checkbox" data-group="target"><span>動作改善</span></label><label class="chip"><input type="checkbox" data-group="target"><span>負荷調整</span></label>
+</div><div class="line"><input id="targetText" type="text" placeholder="一言だけ補足"></div></div>
+
+<div class="card req" data-id="tx"><div class="head"><b>⑤ TX｜何をする</b><span class="hint">目的に対応してる？</span></div>
+<div class="chips">
+<label class="chip"><input type="checkbox" data-group="tx"><span>手技</span></label><label class="chip"><input type="checkbox" data-group="tx"><span>運動療法</span></label><label class="chip"><input type="checkbox" data-group="tx"><span>固定</span></label><label class="chip"><input type="checkbox" data-group="tx"><span>物療</span></label><label class="chip"><input type="checkbox" data-group="tx"><span>生活指導</span></label><label class="chip"><input type="checkbox" data-group="tx"><span>負荷制限</span></label>
+</div><div class="line"><input id="txText" type="text" placeholder="例：夜間装具 / 荷重調整"></div></div>
+
+<div class="card req" data-id="re"><div class="head"><b>⑥ RECHECK｜治療後に何を見る</b><span class="hint">ここが空欄なら効果判定できない</span></div>
+<div class="chips">
+<label class="chip"><input type="checkbox" data-group="re"><span>NRS</span></label><label class="chip"><input type="checkbox" data-group="re"><span>再現動作</span></label><label class="chip"><input type="checkbox" data-group="re"><span>圧痛</span></label><label class="chip"><input type="checkbox" data-group="re"><span>ROM</span></label><label class="chip"><input type="checkbox" data-group="re"><span>腫脹</span></label><label class="chip"><input type="checkbox" data-group="re"><span>筋力</span></label>
+</div><div class="line"><input id="reText" type="text" placeholder="例：降車接地痛 / 前方圧痛"></div></div>
+
+<div class="card req" data-id="next"><div class="head"><b>⑦ NEXT｜次回見ること</b><span class="hint">治療の続きではなく再評価</span></div>
+<input id="next" type="text" placeholder="例：降車痛・腫脹・装具後変化"></div>
+
+<div class="card req" data-id="exit"><div class="head"><b>⑧ EXIT / IF NOT</b><span class="hint">出口＋ダメなら次</span></div>
+<div class="grid"><div><div class="mini">EXIT</div><input id="exit" type="text" placeholder="日常動作痛なし等"></div><div><div class="mini">IF NOT</div><input id="ifnot" type="text" placeholder="再評価/MRI相談等"></div></div></div>
+
+<div class="card" id="insight"><div class="head"><b>⚠ 気づき</b><span class="hint">自動表示</span></div><div class="miss" id="miss">まだ入力がありません。</div></div>
+
+<div class="notice"><b>迷ったら：</b>「何が問題？ → 今日何を変える？ → 何をする？ → 何で効いたと見る？ → 次回？ → 出口？ → ダメなら？」<br>所見が合わない・悪化・非典型・Red flag/紹介判断に迷う場合は、惰性で続けず再評価・相談。</div>
+</div>
+
+<footer><div class="actions"><button class="primary" onclick="copySummary()">昼トレ用コピー</button><button class="secondary" onclick="save()">保存</button><button class="danger" onclick="resetAll()">新規</button></div></footer>
+
+<script>
+const textIds=['case','chiefText','problem','diff','examText','targetText','txText','reText','next','exit','ifnot'];
+const reqs=[
+ ['chief','主訴・再現動作',()=>val('chiefText')||checked('chief')],
+ ['problem','第一候補',()=>val('problem')],
+ ['exam','身体所見',()=>val('examText')||checked('exam')],
+ ['target','今日の狙い',()=>val('targetText')||checked('target')],
+ ['tx','介入',()=>val('txText')||checked('tx')],
+ ['re','治療後の再評価',()=>val('reText')||checked('re')],
+ ['next','次回の再評価',()=>val('next')],
+ ['exit','EXIT / IF NOT',()=>val('exit')&&val('ifnot')]
+];
+function val(id){return document.getElementById(id).value.trim()}
+function checked(g){return [...document.querySelectorAll(`[data-group="${g}"]:checked`)].length>0}
+function labels(g){return [...document.querySelectorAll(`[data-group="${g}"]:checked`)].map(x=>x.nextElementSibling.innerText).join(', ')}
+function update(){
+ let done=0,miss=[];
+ reqs.forEach(([key,label,fn])=>{let ok=!!fn();let card=document.querySelector(`[data-id="${key}"]`);if(ok){done++;card.classList.remove('missing')}else{miss.push(label);card.classList.add('missing')}});
+ document.getElementById('score').innerText=`${done}/8`;
+ let b=document.getElementById('badge'); b.innerText=done===8?'骨格OK':done>=6?'あと少し':'確認不足'; b.style.background=done===8?'var(--green)':done>=6?'#fff3d6':'var(--blue)';
+ let tips=[];
+ if(!checked('exam')&&!val('examText')) tips.push('身体所見をほぼ記録していない');
+ if((checked('tx')||val('txText'))&&(!checked('re')&&!val('reText'))) tips.push('治療は決めたが、効果判定が未設定');
+ if(val('next')==='' ) tips.push('次回来院時に何を見るか未設定');
+ if(val('exit')==='' ) tips.push('治療の出口が未設定');
+ if(val('ifnot')==='' ) tips.push('改善しない場合のPlan Bが未設定');
+ if(val('problem') && !val('diff')) tips.push('第一候補はあるが鑑別が未記載');
+ let html=miss.length?`未確認：<span class="redtxt">${miss.join(' / ')}</span>`:'主要項目は確認済み';
+ if(tips.length) html+=`<br><br><b>見落とし候補</b><br>・${tips.join('<br>・')}`;
+ document.getElementById('miss').innerHTML=html; autosave();
+}
+function autosave(){let d={};textIds.forEach(id=>d[id]=document.getElementById(id).value);d.checks=[...document.querySelectorAll('input[type=checkbox]')].map(x=>x.checked);localStorage.setItem('masaQuick',JSON.stringify(d))}
+function load(){try{let d=JSON.parse(localStorage.getItem('masaQuick'));if(d){textIds.forEach(id=>{if(d[id]!=null)document.getElementById(id).value=d[id]});[...document.querySelectorAll('input[type=checkbox]')].forEach((x,i)=>x.checked=!!d.checks?.[i])}}catch(e){} update()}
+function save(){autosave();alert('この端末に保存しました')}
+function resetAll(){if(!confirm('入力を消して新しい症例を始めますか？'))return;textIds.forEach(id=>document.getElementById(id).value='');document.querySelectorAll('input[type=checkbox]').forEach(x=>x.checked=false);localStorage.removeItem('masaQuick');update();scrollTo({top:0,behavior:'smooth'})}
+async function copySummary(){
+ let s=`MASA QUICK\n症例:${val('case')||'-'}\n主訴:${labels('chief')} ${val('chiefText')}\n仮説:${val('problem')||'未'} / 鑑別:${val('diff')||'未'}\n所見:${labels('exam')} ${val('examText')}\nTODAY:${labels('target')} ${val('targetText')}\nTX:${labels('tx')} ${val('txText')}\nRECHECK:${labels('re')} ${val('reText')}\nNEXT:${val('next')||'未'}\nEXIT:${val('exit')||'未'}\nIF NOT:${val('ifnot')||'未'}`;
+ try{await navigator.clipboard.writeText(s);alert('昼トレ用にコピーしました')}catch(e){prompt('コピーしてください',s)}
+}
+document.querySelectorAll('input').forEach(x=>x.addEventListener('input',update));document.querySelectorAll('input[type=checkbox]').forEach(x=>x.addEventListener('change',update));load();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body></html>

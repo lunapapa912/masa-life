@@ -1,0 +1,21 @@
+{
+  "name": "MASA Clinical Quick",
+  "short_name": "MASA Clinical",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#17324d",
+  "description": "診療中の見落としと治療計画の抜けを短時間で確認するMASA Clinical Quick。",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
