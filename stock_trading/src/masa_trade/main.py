@@ -13,7 +13,8 @@ from pathlib import Path
 
 from masa_trade.config import Settings, load_settings
 from masa_trade.data.fetcher import fetch_ohlcv
-from masa_trade.logic.masa import JudgeResult, judge
+from masa_trade.logic.masa import build_chart_data, judge
+from masa_trade.logic.schema import CIODecisionMemo, JudgeInput, ReviewMode
 from masa_trade.notify.notifier import notify
 
 logger = logging.getLogger(__name__)
@@ -39,16 +40,36 @@ def setup_logging(settings: Settings) -> None:
     root.addHandler(logging.StreamHandler())
 
 
-def run(config_dir: str | Path | None = None) -> list[JudgeResult]:
+def build_judge_input(item_symbol: str, item_name: str, settings: Settings) -> JudgeInput:
+    """v2.19のFINAL RANKINGで選ばれた1銘柄について、v1.3の精査に必要な入力を組み立てる。
+
+    現状、自動取得できているのは株価データ(チャート)のみ。
+    材料・会計・希薄化・業績接続・織込み度・カタリストの各データは
+    まだ取得元が未実装のため空のまま渡し、対応するゲートは UNKNOWN になる。
+    TODO: 適時開示・決算・需給データの取得元を実装し、ここで埋める。
+    """
+    ohlcv = fetch_ohlcv(item_symbol, settings)
+    chart = build_chart_data(ohlcv, settings)
+    default_mode = ReviewMode(settings.raw.get("cio_review", {}).get("default_mode", "C"))
+    return JudgeInput(
+        symbol=item_symbol,
+        name=item_name,
+        mode=default_mode,
+        current_price=float(ohlcv["Close"].iloc[-1]),
+        research_timestamp=settings.now(),
+        chart=chart,
+    )
+
+
+def run(config_dir: str | Path | None = None) -> list[CIODecisionMemo]:
     settings = load_settings(config_dir)
     setup_logging(settings)
 
-    results: list[JudgeResult] = []
+    results: list[CIODecisionMemo] = []
     for item in settings.watchlist:
         try:
-            ohlcv = fetch_ohlcv(item.symbol, settings)
-            result = judge(item.symbol, ohlcv, settings)
-            results.append(result)
+            judge_input = build_judge_input(item.symbol, item.name, settings)
+            results.append(judge(judge_input, settings))
         except Exception:
             logger.exception("判定に失敗しました: %s (%s)", item.name, item.symbol)
 

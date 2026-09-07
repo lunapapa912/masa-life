@@ -17,7 +17,7 @@ data:
   cache_dir: "../data"
 
 masa_logic:
-  # MASA式の主要パラメータ(仮値。実ロジック実装時に調整する)
+  # チャートデータ(短期ENTRYスコアの材料)を作るためのテクニカル指標パラメータ。
   moving_averages:
     short: 5
     medium: 25
@@ -27,9 +27,37 @@ masa_logic:
   rsi_period: 14
   rsi_overbought: 70
   rsi_oversold: 30
-  # 判定スコアの閾値。これ以上で「買いシグナル」、以下で「売りシグナル」
-  buy_score_threshold: 3
-  sell_score_threshold: -3
+
+# まー式 統合運用プロンプト v1.3(6ゲート判定・3スコア・CIO決裁書)向けの設定。
+# v2.19(ZERO-BASE DISCOVERY等による日次スクリーニング)には一切影響しない。
+# 閾値は全て仮値。v1.3の詳細ルールが確定次第、正式な値に差し替える。
+cio_review:
+  # v1.3の3モード。C=個別精査をデフォルトにしておく。
+  default_mode: "C"
+
+  gates:
+    dilution:
+      # これを超える想定希薄化率でFAIL(仮値。G2 大規模希薄化)
+      max_acceptable_ratio_pct: 10.0
+    pricing_in:
+      # 材料発表から lookback_days 以内に、株価が既にこの%以上動いていたらFAIL(仮値。G5 株価への織込み)
+      already_priced_in_pct: 15.0
+      lookback_days: 5
+    short_term_catalyst:
+      # G6は「今後1〜3営業日の短期カタリスト」が原文の定義。ここを変えるとG6の意味がズレる。
+      max_days_ahead: 3
+
+  gate_policy:
+    # 重大FAIL(critical=true)は無条件でAVOID。それ以外のFAILも現状はAVOID扱い(仮)。
+    fail_is_veto: true
+    # いずれかのゲートがUNKNOWN(データ不足)ならENTRY/WATCHを出さずWAITにするか
+    pending_blocks_execute: true
+
+  decision_thresholds:
+    # 3スコア合計(300点満点)がこれ以上でENTRY(仮値。v1.3原文に数値境界の明記なし)
+    entry_min_total_score: 210
+    # 3スコア合計がこれ以上でWATCH継続(仮値)
+    watch_min_total_score: 150
 
 notify:
   enabled: true

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import yaml
 from dotenv import load_dotenv
@@ -50,6 +52,11 @@ class Settings:
     def resolve_path(self, relative: str) -> Path:
         """config配下のyamlに書かれた相対パスを絶対パスに解決する。"""
         return (self.config_dir / relative).resolve()
+
+    def now(self) -> dt.datetime:
+        """app.timezone(既定 Asia/Tokyo)のタイムゾーン付き現在時刻を返す。"""
+        tz_name = self.raw.get("app", {}).get("timezone", "Asia/Tokyo")
+        return dt.datetime.now(tz=ZoneInfo(tz_name))
 
 
 def load_settings(config_dir: str | Path | None = None) -> Settings:
