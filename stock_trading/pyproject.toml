@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "masa-trade"
+version = "0.1.0"
+description = "MASA式短期売買判定ロジックを日次自動実行するためのプロジェクト"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "yfinance>=0.2.40",
+    "PyYAML>=6.0",
+    "python-dotenv>=1.0",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+masa-trade = "masa_trade.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]

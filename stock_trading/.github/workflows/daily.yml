@@ -1,0 +1,43 @@
+name: MASA式 日次判定
+
+on:
+  schedule:
+    # 06:30 UTC = 15:30 JST(東証の大引け後)。平日のみ。
+    - cron: "30 6 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  run-masa-trade:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: stock_trading
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run daily judgement
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          LINE_NOTIFY_TOKEN: ${{ secrets.LINE_NOTIFY_TOKEN }}
+          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+          EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER }}
+          EMAIL_SMTP_PASSWORD: ${{ secrets.EMAIL_SMTP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python -m masa_trade.main
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: masa-trade-logs
+          path: stock_trading/logs/
+          retention-days: 30
