@@ -26,6 +26,8 @@ from datetime import date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from masa_trade.logic.common.order import OrderProposal, PriceTiers  # noqa: F401 (re-exported)
+
 if TYPE_CHECKING:
     import pandas as pd
 
@@ -347,37 +349,11 @@ class JudgeInput:
 
 # ---------------------------------------------------------------------------
 # CIO決裁書の付帯構造(注文案・価格ティア・総合評価)
+#
+# OrderProposal / PriceTiers は v2.1(週間ランキング戦略)のENTRY/STOP/TARGETと
+# 同じ形のため logic/common/order.py に切り出し、ここでは再エクスポートするだけにする
+# (ファイル冒頭でimport済み)。
 # ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class PriceTiers:
-    """打診/通常/強気価格。"""
-
-    tentative: float | None = None  # 打診価格
-    normal: float | None = None  # 通常価格
-    aggressive: float | None = None  # 強気価格
-
-
-@dataclass(frozen=True)
-class OrderProposal:
-    """注文案。【執行】節の項目(区分・指値・株数・有効期限・逆指値・利確・最大損失・RR・
-    取消条件・12:30再判定条件)と、CIO決裁書冒頭の打診/通常/強気価格・無効条件を統合する。
-    """
-
-    order_category: str | None = None  # 区分(現物買い/信用買い等)
-    price_tiers: PriceTiers = field(default_factory=PriceTiers)
-    quantity: int | None = None  # 株数(原則100株単位)
-    validity_period: str | None = None  # 有効期限
-    stop_trigger_price: float | None = None  # 逆指値発動値
-    stop_method: str | None = None  # 発動方法
-    expected_fill_price: float | None = None  # 想定約定
-    take_profit_price: float | None = None  # 利確
-    max_loss: float | None = None  # 最大損失
-    risk_reward: float | None = None  # RR
-    invalidation_condition: str | None = None  # 無効条件
-    cancel_condition: str | None = None  # 取消条件
-    reconfirm_at_1230_condition: str | None = None  # 12:30再判定条件
 
 
 @dataclass(frozen=True)

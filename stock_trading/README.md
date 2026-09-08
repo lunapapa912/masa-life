@@ -28,6 +28,15 @@
 連携ポイント。現時点ではv2.19との自動連携は未実装のため、サンプル銘柄を手動で
 置いている(TODO参照)。
 
+さらに、v1.3・v2.19を補完する第3の戦略として **v2.1(まー式・鉄人戦週間ランキング
+戦略)** がある。月曜日の3時点(始まり値・10:30・前引け)を起点に、週間値幅
+ランキング(全50銘柄)をゼロベース評価し、MODEL WINNER(理論上のベスト)と
+EXECUTABLE WINNER(実際に買える現実解)を分離して選定、月〜金でMFE/MAEを追跡し、
+金曜にWEEKLY AUDITを行う週次サイクル。v1.3・v2.19が日次/都度なのに対し、
+v2.1は **週をまたぐ状態(月曜に決めた本命の固定、複数週の統計蓄積)を持つ点**が
+大きく異なるため、`logic/weekly/` として独立させている
+(**現時点ではv1.3のjudge()とは連携させていない**)。
+
 ## 実装状況
 
 `src/masa_trade/logic/schema.py` に、v1.3原文の【スコア】【6ゲート】
@@ -36,6 +45,19 @@
 3スコア・CIO決裁書を組み立てるが、**各ゲートの合否条件・各スコア項目の配点式・
 CIO決裁書の企業判定/売買判定を導く最終ロジックはv1.3の詳細ルール確定待ち**のプレー
 スホルダーになっている(詳細は「今後実装が必要な部分」を参照)。
+
+同様に `src/masa_trade/logic/weekly/schema.py` に v2.1原文の【FUTURE MFE SCORE】
+(7項目・配点)、A/B/C分類、6ゲート相当のフラグ群(CONTINUATION OVERRIDE/TRAP
+CONTROL/PEAK-OUT WARNING/EXIT等)、MFE/MAE/CAPTURE RATEのデータスキーマを定義し、
+`logic/weekly/engine.py` に判定関数を実装している。**原文に数値が明記されている
+部分**(FUTURE MFE SCOREの配点、MARKET REGIME DEFENSEの閾値、CONTINUATION
+OVERRIDEの「3項目以上」、MFE/MAE/CAPTURE RATEの計算式)はそのまま実装済み。
+**数値の明記がない部分**(A/B/C分類の境界、MODEL/EXECUTABLE WINNERの選定式、
+PEAK-OUT WARNINGの具体的な組み合わせ数)はTODOのプレースホルダー。
+週間値幅ランキング画像の読み取りは自動化しておらず、セッション(Claude)が画像を
+見て構造化データに変換し、`logic/weekly/`の各関数に渡す運用を前提としている。
+週次記録は `logic/weekly/store.py` でローカルJSONL(`data/weekly_records/`)に
+保存する(gitignore対象)。
 
 ## フォルダ構成
 
@@ -51,16 +73,24 @@ stock_trading/
 │   ├── logic/
 │   │   ├── schema.py     # v1.3の【スコア】【6ゲート】【CIO決裁書】データスキーマ
 │   │   ├── indicators.py # 汎用テクニカル指標(SMA/RSI/出来高倍率)
-│   │   └── masa.py       # v1.3判定ロジック本体(6ゲート判定・3スコア・CIO決裁書組み立て)
+│   │   ├── masa.py       # v1.3判定ロジック本体(6ゲート判定・3スコア・CIO決裁書組み立て)
+│   │   ├── common/
+│   │   │   └── order.py  # OrderProposal/PriceTiers/MarketRegime(v1.3・v2.1共通)
+│   │   └── weekly/       # v2.1(週間ランキング戦略)。v1.3とは独立
+│   │       ├── schema.py # A/B/C分類・FUTURE MFE SCORE・WeeklyRecord等
+│   │       ├── engine.py # market regime判定・スコア枠組み・MFE/MAE/CAPTURE RATE計算
+│   │       └── store.py  # WeeklyRecordのローカルJSONL永続化
 │   ├── notify/
 │   │   └── notifier.py   # Slack/LINE/Emailへの通知(要実装)
-│   └── main.py           # 日次実行のエントリーポイント
+│   └── main.py           # 日次実行のエントリーポイント(v1.3のみ。v2.1は未配線)
 ├── scripts/
 │   └── run_daily.sh      # cron等から呼び出す実行スクリプト
 ├── tests/
 │   ├── test_indicators.py # テクニカル指標のユニットテスト
-│   └── test_masa.py       # ゲート判定・CIO決裁書組み立てのユニットテスト
+│   ├── test_masa.py       # v1.3ゲート判定・CIO決裁書組み立てのユニットテスト
+│   └── test_weekly.py     # v2.1スコア定義・market regime・MFE/MAE等のユニットテスト
 ├── data/                 # 取得データのキャッシュ置き場(gitignore対象)
+│   └── weekly_records/   # v2.1のWeeklyRecord JSONL保存先(gitignore対象)
 ├── logs/                 # ログ出力先(gitignore対象)
 ├── .github/workflows/
 │   └── daily.yml         # GitHub Actionsによる平日自動実行(15:30 JST)
@@ -125,3 +155,13 @@ Slack/LINE/Emailで通知する場合は、リポジトリの Settings > Secrets
   取得元の実装、および取得データのローカルキャッシュ(`config.data.cache_dir`)の活用。
 - v2.19との連携: `config/watchlist.yaml` を v2.19 の FINAL RANKING 出力から
   自動生成する仕組み(現状は手動管理)。
+- `src/masa_trade/logic/weekly/engine.py` の `score_future_mfe()` /
+  `classify_stock_type()` / `select_winners()`: v2.1のFUTURE MFE SCOREの配点式・
+  A/B/C分類の境界・WINNER選定式(現状は原文に数値の明記がなくプレースホルダー)。
+  10〜20〜30回のAUTO検証を経てユーザーと一緒に数値化する予定。
+  `is_peak_out_warning()` の「複数成立」の具体的な閾値も同様に仮値(2件以上)。
+- v2.1の週間値幅ランキング画像を構造化データ(`RankingSnapshot`)に変換する
+  仕組み(現状はセッション内でClaudeが画像を読んで手動で構築する運用)。
+- v2.1とv1.3の連携(EXECUTABLE WINNERをjudge()の6ゲートにも通すか)は、
+  ユーザー判断により今回は見送り。将来必要になれば
+  `WeeklyCandidate → JudgeInput` の変換ロジックを追加する。

@@ -13,6 +13,9 @@ dist/
 # 実行時に生成されるデータ・ログ(ディレクトリ自体は .gitkeep で保持)
 data/*
 !data/.gitkeep
+!data/weekly_records/
+data/weekly_records/*
+!data/weekly_records/.gitkeep
 logs/*
 !logs/.gitkeep
 
