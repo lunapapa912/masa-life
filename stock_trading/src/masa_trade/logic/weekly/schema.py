@@ -37,6 +37,7 @@ __all__ = [
     "Checkpoint",
     "ContinuationOverrideFlag",
     "ContinuationTrapFlag",
+    "DisclosureRecord",
     "EntryMethod",
     "ErrorClass",
     "ExitReason",
@@ -284,6 +285,21 @@ class CatalystInfo:
     notes: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class DisclosureRecord:
+    """TDnet適時開示1件(logic/weekly/tdnet.py が取得・組み立てる)。
+
+    score_catalyst_strength() の入力になる。呼び出し側は「スコアリング対象の
+    時点までに出た開示だけ」に絞り込んで渡すこと(LOOK-AHEAD BIAS禁止)。
+    """
+
+    company_name: str
+    title: str
+    pubdate: datetime
+    company_code: str | None = None
+    source_url: str | None = None
+
+
 # ---------------------------------------------------------------------------
 # 【10.FUTURE MFE SCORE】原文どおりの項目名・配点。
 # ---------------------------------------------------------------------------
@@ -367,6 +383,9 @@ class WeeklyCandidate:
     stock_type: StockType | None = None
     rank_history: RankHistory | None = None
     catalyst: CatalystInfo = field(default_factory=CatalystInfo)
+    # score_catalyst_strength()の入力。呼び出し側がスコアリング時点までの開示だけに
+    # 絞り込んで渡す想定(LOOK-AHEAD BIAS禁止)。
+    disclosures: list[DisclosureRecord] = field(default_factory=list)
     continuation_override_flags: list[ContinuationOverrideFlag] = field(default_factory=list)
     continuation_trap_flags: list[ContinuationTrapFlag] = field(default_factory=list)
     score: FutureMfeScore = field(default_factory=empty_future_mfe_score)

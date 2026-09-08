@@ -68,8 +68,33 @@ FUTURE MFE SCOREの7項目のうち「ランキング推移」「上昇率加速
 を区別している。誠建設工業(順位上位で凍結→15点)と古林紙工(順位下位で凍結
 →3点)の実データで回帰テスト済み。
 
-残り3項目(CATALYST・テーマ/市場資金・過去統計適合度)は材料・テーマ・複数週の
-統計データが未取得のため未算出(`points=None`)。
+「CATALYST」(20点)は**TDnet適時開示のキーワード判定**(`score_catalyst_strength()`)
+で実装済み。データ取得元は無料・認証不要のやのしんWEB-API
+(`logic/weekly/tdnet.py`、https://webapi.yanoshin.jp/)を採用した。事前調査で、
+`pip install tdnet`はPython 3.12以上必須(本プロジェクトは3.11)かつXBRL財務諸表を
+丸ごとパースする大規模ライブラリで今回の用途には過剰と判明し、また公式サイト
+`release.tdnet.info`はこのセッションの実行環境からプロキシ越しに到達不可
+(CONNECT 502)だったため不採用とした。証券コードでの銘柄マッピングは不要にした:
+やのしんAPIの日付範囲検索エンドポイントは1回のリクエストで全市場分の開示を返すため、
+会社名の部分一致で絞り込める(週間ランキング画像には証券コードが載っていないことが
+多いため、これはむしろ好都合)。開示タイトルはLLM判定を挟まず、`engine.py`内の
+`CATALYST_POSITIVE_KEYWORDS`(好材料)・`CATALYST_NEGATIVE_KEYWORDS`(弱気、
+深刻度別に0〜3点の辞書)・`CATALYST_NEUTRAL_KEYWORDS`(決算短信等の定型開示)の
+3辞書でキーワード判定するのみの完全無料ロジック。
+
+**実データでの発見**: 対象5銘柄(誠建設工業・オンコリスバイオ・テラドローン・
+エプリー・古林紙工)について2026-09-07〜08の全市場開示210件を実際に取得し
+会社名で絞り込んだ結果、**テラドローンにのみ開示があり**(2026-09-07 15:30
+「第21回新株予約権(行使価額修正条項付)の大量行使...に関するお知らせ」)、
+他4銘柄には開示がなかった。この開示は希薄化に直結する新株予約権の大量行使であり、
+テラドローンの実際の急落(同日、前引け→終値で-14.7pt)と符合する。「新株予約権」を
+`CATALYST_NEGATIVE_KEYWORDS`の重大区分(0点)に追加した根拠になっている。
+一方、**誠建設工業のストップ高固定(前項)を裏付ける好材料の開示は見つからず**、
+仮説は開示情報では確認できなかった(会社発表を伴わないテーマ/思惑・地合い起因の
+値動きである可能性が残る)。
+
+残り2項目(テーマ/市場資金・過去統計適合度)はテーマ・複数週の統計データが
+未取得のため未算出(`points=None`)。
 **数値の明記がない部分**(A/B/C分類の境界、MODEL/EXECUTABLE WINNERの選定式、
 PEAK-OUT WARNINGの具体的な組み合わせ数)はTODOのプレースホルダー。
 
@@ -109,6 +134,7 @@ stock_trading/
 │   │       ├── schema.py # A/B/C分類・FUTURE MFE SCORE・WeeklyRecord等
 │   │       ├── engine.py # market regime判定・FUTURE MFE SCORE(3/7項目実装)・MFE/MAE/CAPTURE RATE計算
 │   │       ├── loader.py # ランキング画像から読み取ったJSON/dictをスキーマへ変換
+│   │       ├── tdnet.py  # TDnet適時開示の取得(やのしんWEB-API、無料・認証不要)
 │   │       └── store.py  # WeeklyRecordのローカルJSONL永続化
 │   ├── notify/
 │   │   └── notifier.py   # Slack/LINE/Emailへの通知(要実装)
@@ -120,7 +146,8 @@ stock_trading/
 │   ├── test_masa.py           # v1.3ゲート判定・CIO決裁書組み立てのユニットテスト
 │   ├── test_weekly.py         # v2.1スコア定義・market regime・MFE/MAE等のユニットテスト
 │   ├── test_weekly_loader.py  # v2.1ランキング画像JSONの読み込みユニットテスト
-│   └── test_weekly_scoring.py # v2.1 FUTURE MFE SCOREの実データ回帰テスト
+│   ├── test_weekly_scoring.py # v2.1 FUTURE MFE SCOREの実データ回帰テスト
+│   └── test_weekly_tdnet.py   # TDnet開示取得(やのしんAPI)のモックテスト
 ├── data/                 # 取得データのキャッシュ置き場(gitignore対象)
 │   └── weekly_records/   # v2.1のWeeklyRecord JSONL保存先(gitignore対象)
 ├── logs/                 # ログ出力先(gitignore対象)
@@ -188,8 +215,20 @@ Slack/LINE/Emailで通知する場合は、リポジトリの Settings > Secrets
 - v2.19との連携: `config/watchlist.yaml` を v2.19 の FINAL RANKING 出力から
   自動生成する仕組み(現状は手動管理)。
 - `src/masa_trade/logic/weekly/engine.py` の `score_future_mfe()`: FUTURE MFE
-  SCOREの残り3項目(CATALYST20・テーマ/市場資金10・過去統計適合度10)。
-  材料・テーマ・複数週の統計データが必要。
+  SCOREの残り2項目(テーマ/市場資金10・過去統計適合度10)。テーマ・複数週の
+  統計データが必要。
+- `score_catalyst_strength()` のキーワード辞書ベース判定の限界: 皮肉な言い回し
+  (例:「大幅な下方修正の可能性は低いと判断」のような否定を含む文)や、好材料と
+  弱気材料が同じタイトルに混在する複合的な開示を誤判定する可能性がある。将来的には
+  このセッション(Claude)自身が開示タイトル(必要なら本文)を読んで意味解釈する
+  LLM判定に拡張する余地がある(キーワード辞書は一次スクリーニング、LLM判定は
+  グレーゾーンの再判定、という二段構成も考えられる)。
+- CATALYSTのデータ取得(`logic/weekly/tdnet.py`)は日付範囲の全市場検索を
+  会社名で絞り込む設計にしており、証券コード解決には依存していない。ただし
+  同名・類似名の別銘柄を誤って拾う可能性はゼロではない(部分一致のため)。
+  証券コードが判明している銘柄は、`filter_by_company_name()`ではなく
+  やのしんAPIの銘柄コード指定エンドポイント(`list/{code}.json2`)に切り替える
+  ことでより厳密に絞り込める。
 - ストップ高/安判定を「プロキシ(`score_stop_high_lock_proxy`, 上昇率凍結+順位
   ベース)」から「正式(`get_price_limit_width`, JPX制限値幅表ベース)」に
   切り替えるために必要なデータ:

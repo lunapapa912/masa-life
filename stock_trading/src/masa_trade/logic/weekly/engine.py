@@ -20,6 +20,7 @@ from masa_trade.logic.common.order import MarketRegime
 from masa_trade.logic.weekly.schema import (
     Checkpoint,
     ContinuationOverrideFlag,
+    DisclosureRecord,
     FutureMfeScore,
     FutureMfeScoreItem,
     MarketRegimeInput,
@@ -362,6 +363,127 @@ def score_stop_high_lock_proxy(rank_history: RankHistory | None, total_stocks: i
 
 
 # ---------------------------------------------------------------------------
+# 【10.FUTURE MFE SCORE】④CATALYST(20点)
+#
+# 開示タイトルのキーワードだけで強気/中立/弱気を判定する辞書ベースの簡易ロジック。
+# LLM呼び出しなし・完全無料。データ取得は logic/weekly/tdnet.py
+# (無料・認証不要のやのしんWEB-API)を使う。
+#
+# キーワードは後から調整しやすいよう定数として分離している。
+# CATALYST_NEGATIVE_KEYWORDS は「キーワード: 該当時の点数」の辞書にして、
+# 深刻度に応じて0点(重大)〜3点(軽微)の幅を持たせている。
+# 「新株予約権」は実データ(2026-09-07のテラドローンの新株予約権大量行使開示、
+# 同日の順位急落と時期が一致)を踏まえて追加した。
+# ---------------------------------------------------------------------------
+
+CATALYST_POSITIVE_KEYWORDS: tuple[str, ...] = (
+    "上方修正",
+    "増配",
+    "自己株式取得",
+    "業務提携",
+    "資本業務提携",
+    "特別配当",
+    "新規事業",
+    "大型受注",
+)
+
+CATALYST_NEGATIVE_KEYWORDS: dict[str, float] = {
+    # 重大(0点): 上場維持・希薄化・特損など、点数で相殺すべきでない問題
+    "上場廃止": 0.0,
+    "内部統制の不備": 0.0,
+    "特別損失": 0.0,
+    "新株予約権": 0.0,
+    # 軽微(3点): 業績下振れ系だが上記ほど深刻ではないもの
+    "下方修正": 3.0,
+    "減配": 3.0,
+}
+
+CATALYST_NEUTRAL_KEYWORDS: tuple[str, ...] = (
+    "決算短信",
+    "四半期報告書",
+    "半期報告書",
+    "有価証券報告書",
+    "決算説明資料",
+)
+
+
+def score_catalyst_strength(disclosures: list[DisclosureRecord]) -> FutureMfeScoreItem:
+    """④CATALYST(20点満点)。開示タイトルのキーワードで強気/中立/弱気を判定する。
+
+    disclosuresは呼び出し側が「スコアリング対象の時点までに出た開示だけ」に
+    絞り込んで渡すこと(LOOK-AHEAD BIAS禁止, v2.1原文§26)。
+    tdnet.filter_up_to() で絞り込んでから渡す想定。
+
+    優先順位: 弱気キーワードが1つでもあれば(最も深刻なものの点数を採用)、
+    好材料キーワードやその他の開示より優先してリスクを反映する。
+    弱気キーワードがなければ好材料キーワードを見る。どちらもなければ、
+    決算短信等の定型開示かどうかで中立の強さを分ける。
+
+    注意: キーワード辞書ベースの単純な判定であり、皮肉な言い回し・複合的な
+    開示文脈(例: 好材料と弱気材料が同じタイトルに混在する場合など)は
+    誤判定しうる。README「今後実装が必要な部分」参照。
+    """
+    name = "CATALYST"
+    if not disclosures:
+        return FutureMfeScoreItem(
+            name=name,
+            max_points=20,
+            points=10.0,
+            evidence=["対象期間に適時開示なし(判断材料なしのニュートラル基準点)"],
+            confidence="低(キーワード辞書ベース)",
+        )
+
+    worst_negative: tuple[float, str] | None = None
+    for record in disclosures:
+        for keyword, deduction_points in CATALYST_NEGATIVE_KEYWORDS.items():
+            if keyword in record.title:
+                reason = f"「{record.title}」に弱気キーワード「{keyword}」"
+                if worst_negative is None or deduction_points < worst_negative[0]:
+                    worst_negative = (deduction_points, reason)
+    if worst_negative is not None:
+        points, reason = worst_negative
+        return FutureMfeScoreItem(
+            name=name, max_points=20, points=points, evidence=[reason], confidence="低(キーワード辞書ベース)"
+        )
+
+    positive_matches = [
+        (record, keyword)
+        for record in disclosures
+        for keyword in CATALYST_POSITIVE_KEYWORDS
+        if keyword in record.title
+    ]
+    if positive_matches:
+        matched_keywords = {keyword for _, keyword in positive_matches}
+        points = 20.0 if len(matched_keywords) >= 2 else 15.0
+        record, keyword = positive_matches[0]
+        return FutureMfeScoreItem(
+            name=name,
+            max_points=20,
+            points=points,
+            evidence=[f"「{record.title}」に好材料キーワード「{keyword}」"],
+            confidence="低(キーワード辞書ベース)",
+        )
+
+    neutral_matches = [record for record in disclosures for keyword in CATALYST_NEUTRAL_KEYWORDS if keyword in record.title]
+    if neutral_matches:
+        return FutureMfeScoreItem(
+            name=name,
+            max_points=20,
+            points=8.0,
+            evidence=[f"「{neutral_matches[0].title}」は定型開示(材料性は薄い)"],
+            confidence="低(キーワード辞書ベース)",
+        )
+
+    return FutureMfeScoreItem(
+        name=name,
+        max_points=20,
+        points=5.0,
+        evidence=[f"開示はあるがキーワード辞書に該当なし: 「{disclosures[0].title}」"],
+        confidence="低(キーワード辞書ベース、未分類の開示)",
+    )
+
+
+# ---------------------------------------------------------------------------
 # 【3.3タイプ分類】【11.MODEL/EXECUTABLE WINNER】
 #
 # TODO: 以下は原文に厳密な数値式がないため、A/B/C分類・WINNER選定の自動化は
@@ -378,6 +500,7 @@ def score_future_mfe(candidate: WeeklyCandidate) -> FutureMfeScore:
             score_momentum_acceleration(candidate.rank_history),
             score_overheat_risk(candidate.rank_history),
             score_stop_high_lock_proxy(candidate.rank_history),
+            score_catalyst_strength(candidate.disclosures),
         )
     }
     items = [computed.get(item.name, item) for item in base.items]
@@ -395,8 +518,12 @@ def score_future_mfe(candidate: WeeklyCandidate) -> FutureMfeScore:
                 "のみで暫定算出。絶対株価データが未取得のため正式な制限値幅判定ではない。"
             ),
             (
-                "残り3項目(CATALYST・テーマ/市場資金・過去統計適合度)は"
-                "材料・テーマ・複数週の統計データが未取得のため未算出(points=None)。"
+                "「CATALYST」はTDnet開示タイトルのキーワード判定(score_catalyst_strength)で算出。"
+                "皮肉な言い回し等は誤判定しうる簡易ロジック。"
+            ),
+            (
+                "残り2項目(テーマ/市場資金・過去統計適合度)は"
+                "テーマ・複数週の統計データが未取得のため未算出(points=None)。"
             ),
         ],
     )

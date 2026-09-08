@@ -4,15 +4,22 @@
 (テラドローン・エプリー)を、score_future_mfe() が正しく分離できることを固定する。
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 from masa_trade.logic.weekly.engine import (
+    score_catalyst_strength,
     score_future_mfe,
     score_momentum_acceleration,
     score_ranking_progression,
     score_stop_high_lock_proxy,
 )
-from masa_trade.logic.weekly.schema import Checkpoint, RankEntry, RankHistory, WeeklyCandidate
+from masa_trade.logic.weekly.schema import (
+    Checkpoint,
+    DisclosureRecord,
+    RankEntry,
+    RankHistory,
+    WeeklyCandidate,
+)
 
 MON = date(2026, 9, 7)
 TUE = date(2026, 9, 8)
@@ -126,9 +133,17 @@ def test_reversal_stocks_score_low_on_ranking_and_overheat():
 def test_unimplemented_items_stay_unset():
     candidate = WeeklyCandidate(name=SEISETSU.name, rank_history=SEISETSU)
     score = score_future_mfe(candidate)
-    for name in ("CATALYST", "テーマ/市場資金", "過去統計適合度"):
+    for name in ("テーマ/市場資金", "過去統計適合度"):
         assert _score_by_name(score, name) is None
     assert score.total is None
+
+
+def test_catalyst_defaults_to_neutral_baseline_without_disclosures():
+    # 開示データを渡さない場合、CATALYSTは「未算出(None)」ではなく
+    # v2.1原文どおり「判断材料なしのニュートラル基準点(10点)」になる。
+    candidate = WeeklyCandidate(name=SEISETSU.name, rank_history=SEISETSU)
+    score = score_future_mfe(candidate)
+    assert _score_by_name(score, "CATALYST") == 10
 
 
 def test_stop_high_lock_proxy_flags_frozen_top_rank_stock():
@@ -167,9 +182,14 @@ def test_stop_high_lock_proxy_uses_trailing_streak_only():
 
 
 def test_score_future_mfe_without_rank_history_stays_unset():
+    # CATALYSTだけは「開示なし」でも判断材料なしのニュートラル基準点(10点)を持つ設計。
     candidate = WeeklyCandidate(name="データなし銘柄")
     score = score_future_mfe(candidate)
-    assert all(item.points is None for item in score.items)
+    for item in score.items:
+        if item.name == "CATALYST":
+            assert item.points == 10
+        else:
+            assert item.points is None
 
 
 def _history_up_to_monday_midday_close(history: RankHistory) -> RankHistory:
@@ -201,3 +221,63 @@ def test_ranking_and_momentum_cannot_distinguish_reversal_risk_at_monday_midday_
     seisetsu_momentum = score_momentum_acceleration(seisetsu_at_midday)
     teradrone_momentum = score_momentum_acceleration(teradrone_at_midday)
     assert seisetsu_momentum.points == teradrone_momentum.points == 15
+
+
+# ---------------------------------------------------------------------------
+# score_catalyst_strength(): 2026-09-07のやのしんTDnet WEB-API実データに基づく
+# 回帰テスト。全市場の該当期間(2026-09-07〜08)の開示210件を実際に取得して
+# 対象5銘柄で絞り込んだ結果、テラドローンにのみ開示があり(新株予約権の大量行使)、
+# 他4銘柄(誠建設工業・オンコリスバイオ・エプリー・古林紙工)には開示がなかった。
+# ---------------------------------------------------------------------------
+
+TERADRONE_WARRANT_DISCLOSURE = DisclosureRecord(
+    company_name="Ｇ－テラドローン",
+    title="第21回新株予約権(行使価額修正条項付)の大量行使、行使の完了及び月間行使状況に関するお知らせ",
+    pubdate=datetime(2026, 9, 7, 15, 30, tzinfo=UTC),
+    company_code="278A0",
+)
+
+
+def test_catalyst_strength_flags_real_warrant_disclosure_as_severe_negative():
+    # テラドローンの実際の急落(月曜前引け→終値で-14.7pt)と同日に出た開示。
+    # 「新株予約権」を重大な弱気キーワードとして0点になることを確認する。
+    item = score_catalyst_strength([TERADRONE_WARRANT_DISCLOSURE])
+    assert item.points == 0
+
+
+def test_catalyst_strength_neutral_baseline_for_no_disclosure_stocks():
+    # 誠建設工業・オンコリスバイオ・エプリー・古林紙工は同期間に開示なし
+    # (実際にやのしんAPIで確認済み) → ニュートラル基準点10点。
+    item = score_catalyst_strength([])
+    assert item.points == 10
+
+
+def test_catalyst_strength_positive_keyword():
+    disclosure = DisclosureRecord(
+        company_name="テスト銘柄",
+        title="業務提携及び資本提携に関するお知らせ",
+        pubdate=datetime(2026, 9, 7, 15, 0, tzinfo=UTC),
+    )
+    item = score_catalyst_strength([disclosure])
+    # 「業務提携」「資本業務提携」相当のキーワードが複数該当する場合は20点。
+    assert item.points in (15, 20)
+
+
+def test_catalyst_strength_neutral_routine_filing():
+    disclosure = DisclosureRecord(
+        company_name="テスト銘柄",
+        title="2027年3月期 第1四半期決算短信〔日本基準〕(連結)",
+        pubdate=datetime(2026, 9, 7, 15, 0, tzinfo=UTC),
+    )
+    item = score_catalyst_strength([disclosure])
+    assert item.points == 8
+
+
+def test_score_future_mfe_wires_disclosures_into_catalyst_item():
+    candidate = WeeklyCandidate(
+        name="テラドローン",
+        rank_history=TERADRONE,
+        disclosures=[TERADRONE_WARRANT_DISCLOSURE],
+    )
+    score = score_future_mfe(candidate)
+    assert _score_by_name(score, "CATALYST") == 0
