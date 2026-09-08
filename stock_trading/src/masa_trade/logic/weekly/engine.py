@@ -536,6 +536,35 @@ def score_theme_market_flow(target_sector: str | None, peer_sectors: list[str | 
 
 
 # ---------------------------------------------------------------------------
+# 【10.FUTURE MFE SCORE】⑦過去統計適合度(10点)
+#
+# 「過去の類似パターンとの適合度」を計算するには、複数週分の実績ログ
+# (logic/weekly/history_log.py)が一定数(目安8〜12週)蓄積されている必要がある。
+# 現時点ではログが1週分(2026-09-07週)しかなく、統計的な意味を持つ比較が
+# できないため、他の未実装項目(CATALYST・テーマ/市場資金の「データなし」時)と
+# 同じ設計方針で常に中立基準点を返すプレースホルダーとする。
+# ---------------------------------------------------------------------------
+
+
+def score_historical_fit() -> FutureMfeScoreItem:
+    """⑦過去統計適合度(10点満点)。常に中立基準点(5点)を返すプレースホルダー。
+
+    TODO: logic/weekly/history_log.py に週次ログが目安8〜12週分蓄積された時点で、
+    今週のスコアパターン(①〜⑥の内訳)と過去の勝ちパターン(MODEL WINNER/
+    EXECUTABLE WINNERになった週のスコアパターン)との類似度を計算するロジックに
+    置き換える。その際もLOOK-AHEAD BIAS禁止(v2.1 §26)を守り、「当該週より前の」
+    ログだけを参照すること(当該週に書き込んだ自分自身のレコードは参照しない)。
+    """
+    return FutureMfeScoreItem(
+        name="過去統計適合度",
+        max_points=10,
+        points=5.0,
+        evidence=["複数週分のログが不足しているため中立基準点(目安8〜12週で類似度計算に移行予定)"],
+        confidence="低(プレースホルダー、データ蓄積待ち)",
+    )
+
+
+# ---------------------------------------------------------------------------
 # 【3.3タイプ分類】【11.MODEL/EXECUTABLE WINNER】
 #
 # TODO: 以下は原文に厳密な数値式がないため、A/B/C分類・WINNER選定の自動化は
@@ -554,6 +583,7 @@ def score_future_mfe(candidate: WeeklyCandidate) -> FutureMfeScore:
             score_stop_high_lock_proxy(candidate.rank_history),
             score_catalyst_strength(candidate.disclosures),
             score_theme_market_flow(candidate.sector, candidate.top20_sector_peers),
+            score_historical_fit(),
         )
     }
     items = [computed.get(item.name, item) for item in base.items]
@@ -579,7 +609,8 @@ def score_future_mfe(candidate: WeeklyCandidate) -> FutureMfeScore:
                 "で算出。個別テーマ(AI関連等)はみんかぶ・株探の利用規約上の理由により未対応。"
             ),
             (
-                "残り1項目(過去統計適合度)は複数週の統計データが未取得のため未算出(points=None)。"
+                "「過去統計適合度」は複数週分のログ(目安8〜12週)が貯まるまで"
+                "中立基準点(5点)固定のプレースホルダー(score_historical_fit)。"
             ),
         ],
     )

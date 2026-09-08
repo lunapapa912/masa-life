@@ -123,7 +123,26 @@ JPX「東証上場銘柄一覧」(https://www.jpx.co.jp/markets/statistics-equit
 個別テーマ(AI関連・半導体関連等の思惑ベースの括り)は、上記のとおりみんかぶ・株探を
 利用規約上の理由で使えないため今回のデータソースでは判定できず、対象外にしている。
 
-残り1項目(過去統計適合度)は複数週の統計データが未取得のため未算出(`points=None`)。
+「過去統計適合度」(10点)は`score_historical_fit()`として実装済みだが、
+**常に中立基準点(5点)を返すプレースホルダー**。統計的な意味を持つ「過去の
+類似パターンとの適合度」を計算するには複数週分の実績ログ(目安8〜12週)が
+必要だが、現時点ではログが2026-09-07週の1週分しかないため、これ以上の実装は
+時期尚早と判断した。ログ自体は `logic/weekly/history_log.py` で先に整備した:
+`FutureMfeScore`(①〜⑦がネストしたリスト)を`HistoricalScoreLogEntry`という
+①〜⑦それぞれ独立フィールドを持つ平坦な構造に変換し、`data/weekly_records/`配下に
+JSON Lines形式で追記していく。独立フィールドにしているのは、将来
+「今週のスコアパターン」と「過去の勝ちパターン」の類似度を計算しやすくするため。
+このログは**振り返り専用**であり、LOOK-AHEAD BIAS禁止(v2.1 §26)を守るため
+当該週の`score_future_mfe()`の判断には一切使わない(`score_historical_fit()`が
+将来類似度計算に置き換わる際も、参照するのは「当該週より前の」レコードだけに
+限定すること)。
+
+これで**FUTURE MFE SCOREの①〜⑦全7項目が実装済み**になった(データが揃わない
+場合の中立基準点フォールバックを含め、100点満点の"器"は完成)。
+うち④CATALYST・⑤テーマ/市場資金・⑦過去統計適合度は、対象銘柄によっては
+中立基準点にとどまる(開示なし・業種不明・ログ不足の場合)。残るタスクは
+**②6ゲート相当のフラグ判定の自動化**(CONTINUATION OVERRIDE/TRAP CONTROL/
+PEAK-OUT WARNING等)のみ。
 **数値の明記がない部分**(A/B/C分類の境界、MODEL/EXECUTABLE WINNERの選定式、
 PEAK-OUT WARNINGの具体的な組み合わせ数)はTODOのプレースホルダー。
 
@@ -165,7 +184,8 @@ stock_trading/
 │   │       ├── loader.py # ランキング画像から読み取ったJSON/dictをスキーマへ変換
 │   │       ├── tdnet.py  # TDnet適時開示の取得(やのしんWEB-API、無料・認証不要)
 │   │       ├── sector.py # JPX 33業種区分マスタの取得・名寄せ
-│   │       └── store.py  # WeeklyRecordのローカルJSONL永続化
+│   │       ├── store.py  # WeeklyRecordのローカルJSONL永続化
+│   │       └── history_log.py # ①〜⑦スコア内訳+実績のフラットな週次ログ(JSONL)
 │   ├── notify/
 │   │   └── notifier.py   # Slack/LINE/Emailへの通知(要実装)
 │   └── main.py           # 日次実行のエントリーポイント(v1.3のみ。v2.1は未配線)
@@ -178,7 +198,8 @@ stock_trading/
 │   ├── test_weekly_loader.py  # v2.1ランキング画像JSONの読み込みユニットテスト
 │   ├── test_weekly_scoring.py # v2.1 FUTURE MFE SCOREの実データ回帰テスト
 │   ├── test_weekly_tdnet.py   # TDnet開示取得(やのしんAPI)のモックテスト
-│   └── test_weekly_sector.py  # JPX業種マスタのパース・名寄せのユニットテスト
+│   ├── test_weekly_sector.py  # JPX業種マスタのパース・名寄せのユニットテスト
+│   └── test_weekly_history_log.py # 週次スコアログ(history_log.py)のユニットテスト
 ├── data/                 # 取得データのキャッシュ置き場(gitignore対象)
 │   └── weekly_records/   # v2.1のWeeklyRecord JSONL保存先(gitignore対象)
 ├── logs/                 # ログ出力先(gitignore対象)
@@ -245,8 +266,13 @@ Slack/LINE/Emailで通知する場合は、リポジトリの Settings > Secrets
   取得元の実装、および取得データのローカルキャッシュ(`config.data.cache_dir`)の活用。
 - v2.19との連携: `config/watchlist.yaml` を v2.19 の FINAL RANKING 出力から
   自動生成する仕組み(現状は手動管理)。
-- `src/masa_trade/logic/weekly/engine.py` の `score_future_mfe()`: FUTURE MFE
-  SCOREの残り1項目(過去統計適合度10)。複数週の統計データが必要。
+- `src/masa_trade/logic/weekly/engine.py` の `score_historical_fit()`: 現状は
+  常に中立基準点(5/10点)を返すプレースホルダー。`logic/weekly/history_log.py`
+  に週次ログが目安8〜12週分蓄積された時点で、今週のスコアパターン(①〜⑥の
+  内訳)と過去の勝ちパターン(MODEL WINNER/EXECUTABLE WINNERになった週の
+  スコアパターン)との類似度を計算するロジックに置き換える。その際も
+  LOOK-AHEAD BIAS禁止(v2.1 §26)を守り、「当該週より前に書き込まれた」ログ
+  だけを参照すること。
 - `score_catalyst_strength()` のキーワード辞書ベース判定の限界: 皮肉な言い回し
   (例:「大幅な下方修正の可能性は低いと判断」のような否定を含む文)や、好材料と
   弱気材料が同じタイトルに混在する複合的な開示を誤判定する可能性がある。将来的には
@@ -271,10 +297,14 @@ Slack/LINE/Emailで通知する場合は、リポジトリの Settings > Secrets
   制限値幅表を実装する関数、2026-09-04時点の値を確認済み)経由で判定する
   という経路が使える見込み。
 - `classify_stock_type()` / `select_winners()`: A/B/C分類の境界・WINNER選定式
-  (現状は原文に数値の明記がなくプレースホルダー)。実装済みの5項目(ランキング
-  推移・上昇率加速度・過熱/下落リスク・ストップ高固定proxy・テーマ/市場資金)
-  だけでは月曜前引け時点での予測力が不十分なことが実データで判明しているため、
-  残り1項目(過去統計適合度)が揃ってから着手する。
+  (現状は原文に数値の明記がなくプレースホルダー)。FUTURE MFE SCOREの①〜⑦は
+  全項目実装済み(うち④CATALYST・⑤テーマ/市場資金・⑦過去統計適合度は
+  データ不足時に中立基準点へフォールバックする設計)になったが、これは
+  「100点満点を必ず算出できる」ことを意味するだけで、その配点の閾値・
+  重み付けが月曜前引け時点での実際の予測力(誰がMODEL WINNER/EXECUTABLE
+  WINNERになるか)を正しく反映しているかはまだ検証できていない。
+  `history_log.py` に複数週分のログが蓄積され、実際の勝敗パターンとの
+  突き合わせができるようになってから着手する。
   `is_peak_out_warning()` の「複数成立」の具体的な閾値も同様に仮値(2件以上)。
 - `score_theme_market_flow()` は「業種集中度」のみを見ており、個別テーマ
   (AI関連・半導体関連等の思惑ベースの括り)には対応していない。みんかぶ・株探は

@@ -9,6 +9,7 @@ from datetime import UTC, date, datetime
 from masa_trade.logic.weekly.engine import (
     score_catalyst_strength,
     score_future_mfe,
+    score_historical_fit,
     score_momentum_acceleration,
     score_ranking_progression,
     score_stop_high_lock_proxy,
@@ -131,11 +132,23 @@ def test_reversal_stocks_score_low_on_ranking_and_overheat():
     assert _score_by_name(epli_score, "上昇率加速度") == 0
 
 
-def test_unimplemented_items_stay_unset():
+def test_historical_fit_is_always_neutral_placeholder():
+    # ⑦過去統計適合度は複数週分のログが貯まるまで常に中立基準点(5点)。
+    assert score_historical_fit().points == 5
+
+
+def test_total_score_is_computable_once_all_seven_items_have_defaults():
+    # ①〜⑦全項目が「データなし→中立基準点」のフォールバックを持つようになったため、
+    # rank_historyさえあれば(disclosures/sectorが空でも)合計が算出できる
+    # (100点満点の"器"が完成したことの確認)。
     candidate = WeeklyCandidate(name=SEISETSU.name, rank_history=SEISETSU)
     score = score_future_mfe(candidate)
-    assert _score_by_name(score, "過去統計適合度") is None
-    assert score.total is None
+    assert score.max_score == 100
+    assert score.total is not None
+    assert score.total == sum(item.points for item in score.items)
+    # 誠建設工業(実データ): ①20 + ②15 + ③(ストップ高proxy)15 + ④(開示なし)10
+    # + ⑤(業種不明)5 + ⑥10 + ⑦5 = 80
+    assert score.total == 80
 
 
 def test_theme_market_flow_defaults_to_neutral_baseline_without_sector():
@@ -189,11 +202,11 @@ def test_stop_high_lock_proxy_uses_trailing_streak_only():
 
 
 def test_score_future_mfe_without_rank_history_stays_unset():
-    # CATALYST・テーマ/市場資金は「データなし」でも判断材料なしの
-    # ニュートラル基準点(それぞれ10点・5点)を持つ設計。
+    # CATALYST・テーマ/市場資金・過去統計適合度は「データなし」でも判断材料なしの
+    # ニュートラル基準点(それぞれ10点・5点・5点)を持つ設計。
     candidate = WeeklyCandidate(name="データなし銘柄")
     score = score_future_mfe(candidate)
-    neutral_defaults = {"CATALYST": 10, "テーマ/市場資金": 5}
+    neutral_defaults = {"CATALYST": 10, "テーマ/市場資金": 5, "過去統計適合度": 5}
     for item in score.items:
         if item.name in neutral_defaults:
             assert item.points == neutral_defaults[item.name]

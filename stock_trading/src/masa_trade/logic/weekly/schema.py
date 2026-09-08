@@ -43,6 +43,7 @@ __all__ = [
     "ExitReason",
     "FutureMfeScore",
     "FutureMfeScoreItem",
+    "HistoricalScoreLogEntry",
     "LostWinnerJudgment",
     "MarketRegime",
     "MarketRegimeInput",
@@ -518,3 +519,41 @@ class WeeklyAudit:
     model_winner_rank_by_mfe: int | None = None
     notes: list[str] = field(default_factory=list)
     records: list[WeeklyRecord] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# ⑦過去統計適合度(score_historical_fit)向け: 週次スコア実績ログ
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class HistoricalScoreLogEntry:
+    """1週・1銘柄分のFUTURE MFE SCORE内訳+実績を1レコードにフラット化したもの。
+
+    WeeklyRecord(score: FutureMfeScore、items のネストしたリスト)とは別に、
+    将来「今週のスコアパターンが過去の勝ちパターンにどれだけ近いか」
+    (score_historical_fit()の類似度計算)を計算しやすいよう、①〜⑦の各得点を
+    独立したフィールドとして持つ専用の軽量な記録形式にしている。
+    logic/weekly/history_log.py の build_log_entry() が FutureMfeScore から変換する。
+    """
+
+    week_start_date: date
+    name: str
+    symbol: str | None = None
+
+    # 【10.FUTURE MFE SCORE】7項目の得点(未算出時はNone)
+    score_ranking_progression: float | None = None  # ①ランキング推移(20点満点)
+    score_momentum_acceleration: float | None = None  # ②上昇率加速度(15点満点)
+    score_chart_volume: float | None = None  # ③チャート/出来高(15点満点)
+    score_catalyst: float | None = None  # ④CATALYST(20点満点)
+    score_theme_market_flow: float | None = None  # ⑤テーマ/市場資金(10点満点)
+    score_overheat_risk: float | None = None  # ⑥過熱/下落リスク(10点満点)
+    score_historical_fit: float | None = None  # ⑦過去統計適合度(10点満点)
+    total_score: float | None = None  # 上記7項目の合計(100点満点)
+
+    # 実際の結果(振り返り専用。当該週のスコアリング判断には使わない)
+    final_rank: int | None = None  # その週の最終順位(判明している時点でのもの)
+    final_pct_change: float | None = None  # その週の最終上昇率
+    was_model_winner: bool = False
+    was_executable_winner: bool = False
+    notes: list[str] = field(default_factory=list)
