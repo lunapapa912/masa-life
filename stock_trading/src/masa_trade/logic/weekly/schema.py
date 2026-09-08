@@ -386,6 +386,11 @@ class WeeklyCandidate:
     # score_catalyst_strength()の入力。呼び出し側がスコアリング時点までの開示だけに
     # 絞り込んで渡す想定(LOOK-AHEAD BIAS禁止)。
     disclosures: list[DisclosureRecord] = field(default_factory=list)
+    # score_theme_market_flow()の入力。sectorは対象銘柄のJPX 33業種区分、
+    # top20_sector_peersはその週の上位N位以内の「対象銘柄を除く」他銘柄の
+    # 33業種区分一覧(logic/weekly/sector.pyで解決したもの)。
+    sector: str | None = None
+    top20_sector_peers: list[str] = field(default_factory=list)
     continuation_override_flags: list[ContinuationOverrideFlag] = field(default_factory=list)
     continuation_trap_flags: list[ContinuationTrapFlag] = field(default_factory=list)
     score: FutureMfeScore = field(default_factory=empty_future_mfe_score)

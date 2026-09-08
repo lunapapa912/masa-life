@@ -12,6 +12,7 @@ from masa_trade.logic.weekly.engine import (
     score_momentum_acceleration,
     score_ranking_progression,
     score_stop_high_lock_proxy,
+    score_theme_market_flow,
 )
 from masa_trade.logic.weekly.schema import (
     Checkpoint,
@@ -133,9 +134,15 @@ def test_reversal_stocks_score_low_on_ranking_and_overheat():
 def test_unimplemented_items_stay_unset():
     candidate = WeeklyCandidate(name=SEISETSU.name, rank_history=SEISETSU)
     score = score_future_mfe(candidate)
-    for name in ("テーマ/市場資金", "過去統計適合度"):
-        assert _score_by_name(score, name) is None
+    assert _score_by_name(score, "過去統計適合度") is None
     assert score.total is None
+
+
+def test_theme_market_flow_defaults_to_neutral_baseline_without_sector():
+    # sectorを渡さない場合、CATALYST同様「未算出(None)」ではなく中立基準点(5点)になる。
+    candidate = WeeklyCandidate(name=SEISETSU.name, rank_history=SEISETSU)
+    score = score_future_mfe(candidate)
+    assert _score_by_name(score, "テーマ/市場資金") == 5
 
 
 def test_catalyst_defaults_to_neutral_baseline_without_disclosures():
@@ -182,12 +189,14 @@ def test_stop_high_lock_proxy_uses_trailing_streak_only():
 
 
 def test_score_future_mfe_without_rank_history_stays_unset():
-    # CATALYSTだけは「開示なし」でも判断材料なしのニュートラル基準点(10点)を持つ設計。
+    # CATALYST・テーマ/市場資金は「データなし」でも判断材料なしの
+    # ニュートラル基準点(それぞれ10点・5点)を持つ設計。
     candidate = WeeklyCandidate(name="データなし銘柄")
     score = score_future_mfe(candidate)
+    neutral_defaults = {"CATALYST": 10, "テーマ/市場資金": 5}
     for item in score.items:
-        if item.name == "CATALYST":
-            assert item.points == 10
+        if item.name in neutral_defaults:
+            assert item.points == neutral_defaults[item.name]
         else:
             assert item.points is None
 
@@ -281,3 +290,78 @@ def test_score_future_mfe_wires_disclosures_into_catalyst_item():
     )
     score = score_future_mfe(candidate)
     assert _score_by_name(score, "CATALYST") == 0
+
+
+# ---------------------------------------------------------------------------
+# score_theme_market_flow(): 2026-09-07(月)前引け時点の上位20銘柄をJPX
+# 33業種区分マスタで名寄せした実データに基づく回帰テスト。
+#
+# 上位20銘柄の業種内訳(対象5銘柄を含む): 不動産業(誠建設工業のみ)、
+# 医薬品(オンコリスバイオ・カイオムバイオ・ネクセラファーマの3社)、
+# 精密機器(テラドローンのみ)、サービス業(エプリー[表記ゆれ→エブリー]・
+# ビジネスコーチ・INTLOOPの3社)、精密機器・パルプ紙は対象銘柄が上位20位に
+# 単独で存在(古林紙工は上位20位に入っていない週だったため、そもそも比較対象の
+# 「上位20位以内」に同業種銘柄がいない)。
+# ---------------------------------------------------------------------------
+
+MONDAY_MIDDAY_TOP20_PEER_SECTORS = [
+    "不動産業",  # 誠建設工業(自分を含む場合はcaller側で除外する想定。ここでは他銘柄分のみ列挙)
+    "医薬品",  # オンコリスバイオ
+    "精密機器",  # テラドローン
+    "サービス業",  # エプリー(エブリー)
+    "電気・ガス業",  # デジタルグリッド
+    "医薬品",  # カイオムバイオ
+    "電気機器",  # 日本アビオニクス
+    "情報・通信業",  # ソフトバンク
+    "情報・通信業",  # イメージ情報
+    "ガラス・土石製品",  # 神島化学工業
+    "医薬品",  # ネクセラファーマ
+    "化学",  # 児玉化学工業
+    "情報・通信業",  # VRAIN Solution
+    "サービス業",  # ビジネスコーチ
+    "情報・通信業",  # メディカルネット
+    "電気機器",  # メディアリンクス
+    "輸送用機器",  # 内海造船
+    "情報・通信業",  # スカパー
+    "電気機器",  # QDレーザ
+    "サービス業",  # INTLOOP
+]
+
+
+def _peers_excluding_self(self_sector: str) -> list[str]:
+    peers = list(MONDAY_MIDDAY_TOP20_PEER_SECTORS)
+    peers.remove(self_sector)  # 自分自身の1件だけ除く
+    return peers
+
+
+def test_theme_market_flow_isolated_sector_scores_neutral():
+    # 誠建設工業(不動産業)・テラドローン(精密機器)は、月曜前引け上位20位以内に
+    # 同業種の他銘柄がいない(自分自身のみ)ため中立5点になる。
+    for sector in ("不動産業", "精密機器"):
+        item = score_theme_market_flow(sector, _peers_excluding_self(sector))
+        assert item.points == 5
+
+
+def test_theme_market_flow_two_peers_scores_mild_positive():
+    # オンコリスバイオ(医薬品: カイオムバイオ・ネクセラファーマの他2社が上位20位以内)
+    # エプリー(サービス業: ビジネスコーチ・INTLOOPの他2社が上位20位以内)
+    for sector in ("医薬品", "サービス業"):
+        item = score_theme_market_flow(sector, _peers_excluding_self(sector))
+        assert item.points == 4
+
+
+def test_theme_market_flow_three_or_more_peers_scores_high():
+    # 情報・通信業は上位20位以内に5社(自分を除けば4社)ランクインしている想定。
+    item = score_theme_market_flow("情報・通信業", MONDAY_MIDDAY_TOP20_PEER_SECTORS)
+    assert item.points == 8
+
+
+def test_score_future_mfe_wires_sector_into_theme_market_flow_item():
+    candidate = WeeklyCandidate(
+        name="オンコリスバイオ",
+        rank_history=ONCOLYS,
+        sector="医薬品",
+        top20_sector_peers=_peers_excluding_self("医薬品"),
+    )
+    score = score_future_mfe(candidate)
+    assert _score_by_name(score, "テーマ/市場資金") == 4

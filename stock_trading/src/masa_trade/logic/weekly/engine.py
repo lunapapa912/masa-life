@@ -484,6 +484,58 @@ def score_catalyst_strength(disclosures: list[DisclosureRecord]) -> FutureMfeSco
 
 
 # ---------------------------------------------------------------------------
+# 【10.FUTURE MFE SCORE】⑤テーマ/市場資金(10点) = 「業種集中度スコア」
+#
+# みんかぶ・株探は利用規約で情報の「加工・再利用」を明示的に禁じているため
+# (logic/weekly/sector.pyのモジュールdocstring参照)不採用。個別テーマ
+# (AI関連・半導体関連等の思惑ベースの括り)は今回のデータソースでは判定できない。
+#
+# 代わりに、JPX公式の33業種区分マスタ(logic/weekly/sector.py)と自前で収集した
+# 週間ランキングデータだけで完結する「業種集中度」を見る: その週の上位ランキングに
+# 対象銘柄と同じ33業種の銘柄が複数ランクインしていれば、セクター全体への
+# 資金流入とみなす。
+# ---------------------------------------------------------------------------
+
+
+def score_theme_market_flow(target_sector: str | None, peer_sectors: list[str | None]) -> FutureMfeScoreItem:
+    """⑤テーマ/市場資金(10点)。target_sectorは対象銘柄のJPX 33業種区分、
+    peer_sectorsは対象銘柄を除く、その週の上位N位以内の他銘柄の33業種区分一覧。
+
+    配点(ユーザー指示どおり): 同業種の他銘柄が3社以上→8点、1〜2社→4点、
+    対象銘柄のみ(0社)または業種が特定できない→中立基準点5点。
+    """
+    name = "テーマ/市場資金"
+    if target_sector is None:
+        return FutureMfeScoreItem(
+            name=name,
+            max_points=10,
+            points=5.0,
+            evidence=["対象銘柄の業種が特定できないため中立基準点"],
+            confidence="低(JPX業種マスタでの名寄せに失敗)",
+        )
+
+    peer_count = sum(1 for sector in peer_sectors if sector == target_sector)
+
+    if peer_count >= 3:
+        points = 8.0
+        reason = f"上位ランキングに同業種「{target_sector}」の銘柄が他に{peer_count}社→セクター全体への資金流入の可能性"
+    elif peer_count >= 1:
+        points = 4.0
+        reason = f"上位ランキングに同業種「{target_sector}」の銘柄は他に{peer_count}社のみ"
+    else:
+        points = 5.0
+        reason = f"上位ランキングに同業種「{target_sector}」の銘柄は対象銘柄のみ"
+
+    return FutureMfeScoreItem(
+        name=name,
+        max_points=10,
+        points=points,
+        evidence=[reason],
+        confidence="低(業種集中度のみを見る簡易ロジック。個別テーマは未対応)",
+    )
+
+
+# ---------------------------------------------------------------------------
 # 【3.3タイプ分類】【11.MODEL/EXECUTABLE WINNER】
 #
 # TODO: 以下は原文に厳密な数値式がないため、A/B/C分類・WINNER選定の自動化は
@@ -501,6 +553,7 @@ def score_future_mfe(candidate: WeeklyCandidate) -> FutureMfeScore:
             score_overheat_risk(candidate.rank_history),
             score_stop_high_lock_proxy(candidate.rank_history),
             score_catalyst_strength(candidate.disclosures),
+            score_theme_market_flow(candidate.sector, candidate.top20_sector_peers),
         )
     }
     items = [computed.get(item.name, item) for item in base.items]
@@ -522,8 +575,11 @@ def score_future_mfe(candidate: WeeklyCandidate) -> FutureMfeScore:
                 "皮肉な言い回し等は誤判定しうる簡易ロジック。"
             ),
             (
-                "残り2項目(テーマ/市場資金・過去統計適合度)は"
-                "テーマ・複数週の統計データが未取得のため未算出(points=None)。"
+                "「テーマ/市場資金」はJPX 33業種区分による業種集中度スコア(score_theme_market_flow)"
+                "で算出。個別テーマ(AI関連等)はみんかぶ・株探の利用規約上の理由により未対応。"
+            ),
+            (
+                "残り1項目(過去統計適合度)は複数週の統計データが未取得のため未算出(points=None)。"
             ),
         ],
     )
