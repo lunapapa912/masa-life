@@ -279,6 +279,89 @@ def score_overheat_risk(rank_history: RankHistory | None) -> FutureMfeScoreItem:
 
 
 # ---------------------------------------------------------------------------
+# 【10.FUTURE MFE SCORE】③チャート/出来高(15点)の一部: ストップ高固定検出
+#
+# データソース確認結果: 週間値幅ランキング画像は順位と上昇率(%)のみを提供し、
+# 絶対株価・基準値段(直前営業日終値)を一切含まない(RankEntry.priceはスキーマ上
+# 存在するが、loader.py/実データとも常にNone)。そのため、JPX制限値幅表を使った
+# 正式なストップ高判定(score_stop_high_lock, get_price_limit_width)は実装せず、
+# 「上昇率の連続凍結」をストップ高の代理シグナルとして扱う score_stop_high_lock_proxy
+# のみを実装する。絶対株価データが手に入った場合の移行手順はREADMEのTODOを参照。
+# ---------------------------------------------------------------------------
+
+
+def score_stop_high_lock_proxy(rank_history: RankHistory | None, total_stocks: int = 50) -> FutureMfeScoreItem:
+    """ストップ高固定のプロキシ検出(15点満点、「チャート/出来高」項目に対応)。
+
+    TODO: 絶対株価・基準値段(直前営業日終値)が取得できるデータソースに切り替わり
+    次第、JPX制限値幅表ベースの正式な判定(get_price_limit_width + score_stop_high_lock)
+    に置き換えること。必要なデータ: 銘柄コード(symbol)・当該日の基準値段・
+    各チェックポイントの終値。README「今後実装が必要な部分」参照。
+
+    プロキシ判定: 直近時点まで上昇率が3時点以上連続で完全一致(誤差0.01pt以内)
+    していることを「値幅制限で売買が成立していない」ことの代理シグナルとする。
+    ただし出来高が単に枯れているだけの銘柄(古林紙工のような順位下位の凍結)と
+    区別できないため、直近順位が上位30%(50銘柄なら15位以内)かどうかで
+    強気シグナルか出来高枯渇の疑いかを分ける。
+
+    このスコアは「上振れボーナス」として設計しており、該当なしを減点しない(0点)。
+    v1.3同様、各チェックポイント時点で入手可能な情報だけを使う
+    (LOOK-AHEAD BIAS禁止, v2.1原文§26): 凍結の連続数は「直近時点で終わる」
+    トレイリングの連続数のみを見る。
+    """
+    name = "チャート/出来高"
+    if rank_history is None:
+        return FutureMfeScoreItem(name=name, max_points=15)
+
+    moments = _real_moments(rank_history)
+    if not moments:
+        return FutureMfeScoreItem(name=name, max_points=15)
+
+    pcts = [entry.pct_change for _, _, entry in moments]
+    streak = 1
+    for i in range(len(pcts) - 1, 0, -1):
+        if abs(pcts[i] - pcts[i - 1]) <= 0.01:
+            streak += 1
+        else:
+            break
+
+    if streak < 3:
+        return FutureMfeScoreItem(
+            name=name,
+            max_points=15,
+            points=0.0,
+            evidence=[f"直近の上昇率凍結は{streak}時点のみ(3時点未満)"],
+            confidence="低(proxy判定。絶対株価データ未取得)",
+        )
+
+    latest_rank = moments[-1][2].rank
+    top_threshold = round(total_stocks * 0.3)
+
+    if latest_rank <= top_threshold:
+        points = 15.0
+        reason = (
+            f"上昇率が{streak}時点連続で完全一致(凍結)、"
+            f"かつ直近順位{latest_rank}位が上位{top_threshold}位以内"
+            "→ストップ高で売買不成立の可能性"
+        )
+    else:
+        points = 3.0
+        reason = (
+            f"上昇率が{streak}時点連続で完全一致(凍結)しているが、"
+            f"直近順位{latest_rank}位は上位{top_threshold}位外"
+            "→出来高枯渇による凍結の疑い(強気シグナルとしては弱い)"
+        )
+
+    return FutureMfeScoreItem(
+        name=name,
+        max_points=15,
+        points=points,
+        evidence=[reason],
+        confidence="低(proxy判定。絶対株価データ未取得のため正式なストップ高判定ではない)",
+    )
+
+
+# ---------------------------------------------------------------------------
 # 【3.3タイプ分類】【11.MODEL/EXECUTABLE WINNER】
 #
 # TODO: 以下は原文に厳密な数値式がないため、A/B/C分類・WINNER選定の自動化は
@@ -294,6 +377,7 @@ def score_future_mfe(candidate: WeeklyCandidate) -> FutureMfeScore:
             score_ranking_progression(candidate.rank_history),
             score_momentum_acceleration(candidate.rank_history),
             score_overheat_risk(candidate.rank_history),
+            score_stop_high_lock_proxy(candidate.rank_history),
         )
     }
     items = [computed.get(item.name, item) for item in base.items]
@@ -307,8 +391,12 @@ def score_future_mfe(candidate: WeeklyCandidate) -> FutureMfeScore:
                 "2026-09-07/08の実データから導いた配点式で算出。"
             ),
             (
-                "残り4項目(チャート/出来高・CATALYST・テーマ/市場資金・過去統計適合度)は"
-                "出来高・材料・テーマ・複数週の統計データが未取得のため未算出(points=None)。"
+                "「チャート/出来高」はストップ高固定のプロキシ検出(score_stop_high_lock_proxy)"
+                "のみで暫定算出。絶対株価データが未取得のため正式な制限値幅判定ではない。"
+            ),
+            (
+                "残り3項目(CATALYST・テーマ/市場資金・過去統計適合度)は"
+                "材料・テーマ・複数週の統計データが未取得のため未算出(points=None)。"
             ),
         ],
     )

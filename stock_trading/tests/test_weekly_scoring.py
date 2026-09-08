@@ -10,6 +10,7 @@ from masa_trade.logic.weekly.engine import (
     score_future_mfe,
     score_momentum_acceleration,
     score_ranking_progression,
+    score_stop_high_lock_proxy,
 )
 from masa_trade.logic.weekly.schema import Checkpoint, RankEntry, RankHistory, WeeklyCandidate
 
@@ -73,6 +74,22 @@ EPLI = _history(
     ],
 )
 
+# 古林紙工: 誠建設工業と同様に上昇率が5時点とも0.3%で完全凍結しているが、
+# 順位はずっと24〜30位台(50銘柄中上位30%=15位以内に入らない)。
+# 「ストップ高で強い」のか「単に出来高が枯れて動いていないだけ」なのかを
+# 順位で見分けられるかの確認に使う。
+KOBAYASHI_SHIKO = _history(
+    "古林紙工",
+    [
+        (MON, Checkpoint.OPEN, 40, None),
+        (MON, Checkpoint.MID_MORNING, 27, 0.3),
+        (MON, Checkpoint.MIDDAY_CLOSE, 27, 0.3),
+        (MON, Checkpoint.CLOSE, 24, 0.3),
+        (TUE, Checkpoint.OPEN, 30, 0.3),
+        (TUE, Checkpoint.MIDDAY_CLOSE, 29, 0.3),
+    ],
+)
+
 
 def _score_by_name(score, name: str) -> float:
     return next(item.points for item in score.items if item.name == name)
@@ -109,9 +126,44 @@ def test_reversal_stocks_score_low_on_ranking_and_overheat():
 def test_unimplemented_items_stay_unset():
     candidate = WeeklyCandidate(name=SEISETSU.name, rank_history=SEISETSU)
     score = score_future_mfe(candidate)
-    for name in ("チャート/出来高", "CATALYST", "テーマ/市場資金", "過去統計適合度"):
+    for name in ("CATALYST", "テーマ/市場資金", "過去統計適合度"):
         assert _score_by_name(score, name) is None
     assert score.total is None
+
+
+def test_stop_high_lock_proxy_flags_frozen_top_rank_stock():
+    # 誠建設工業: 5時点連続で上昇率18.5%が凍結、かつ直近順位2位(上位15位以内)
+    # → ストップ高で売買不成立の可能性として満点15点。
+    item = score_stop_high_lock_proxy(SEISETSU)
+    assert item.points == 15
+
+
+def test_stop_high_lock_proxy_downgrades_frozen_low_rank_stock():
+    # 古林紙工: 同様に凍結しているが、順位は24〜30位台(上位15位以内に入らない)
+    # → 出来高枯渇の疑いとして3点にとどまる。
+    item = score_stop_high_lock_proxy(KOBAYASHI_SHIKO)
+    assert item.points == 3
+
+
+def test_stop_high_lock_proxy_scores_zero_when_not_frozen():
+    for history in (ONCOLYS, TERADRONE, EPLI):
+        item = score_stop_high_lock_proxy(history)
+        assert item.points == 0
+
+
+def test_stop_high_lock_proxy_uses_trailing_streak_only():
+    """凍結が過去にあっても直近が動いていれば加点しない(直近状態のみを見る)。"""
+    unfroze_recently = _history(
+        "テスト銘柄",
+        [
+            (MON, Checkpoint.MID_MORNING, 5, 10.0),
+            (MON, Checkpoint.MIDDAY_CLOSE, 5, 10.0),
+            (MON, Checkpoint.CLOSE, 5, 10.0),
+            (TUE, Checkpoint.OPEN, 5, 12.0),
+        ],
+    )
+    item = score_stop_high_lock_proxy(unfroze_recently)
+    assert item.points == 0
 
 
 def test_score_future_mfe_without_rank_history_stays_unset():
