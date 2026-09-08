@@ -52,8 +52,25 @@ CONTROL/PEAK-OUT WARNING/EXIT等)、MFE/MAE/CAPTURE RATEのデータスキーマ
 `logic/weekly/engine.py` に判定関数を実装している。**原文に数値が明記されている
 部分**(FUTURE MFE SCOREの配点、MARKET REGIME DEFENSEの閾値、CONTINUATION
 OVERRIDEの「3項目以上」、MFE/MAE/CAPTURE RATEの計算式)はそのまま実装済み。
+FUTURE MFE SCOREの7項目のうち「ランキング推移」「上昇率加速度」「過熱/下落
+リスク」(計45点)は、2026-09-07/08の実データ(週間値幅ランキング50銘柄・
+月火6時点)から導いた配点式を実装し、実データでの回帰テスト
+(`tests/test_weekly_scoring.py`)で固定している。残り4項目(チャート/出来高・
+CATALYST・テーマ/市場資金・過去統計適合度)は出来高・材料・テーマ・複数週の
+統計データが未取得のため未算出(`points=None`)。
 **数値の明記がない部分**(A/B/C分類の境界、MODEL/EXECUTABLE WINNERの選定式、
 PEAK-OUT WARNINGの具体的な組み合わせ数)はTODOのプレースホルダー。
+
+重要な設計上の知見: 実データ検証で、「ランキング推移」「上昇率加速度」
+「過熱/下落リスク」の3項目は**月曜前引け時点で入手可能なデータだけでは
+その後の急落を予測できない**ことが分かった(前引けまでの2時点だけでは、
+後に急落した銘柄と継続に成功した銘柄が同じスコアになった)。そのため
+これらは「月曜前引け一発のFUTURE MFE SCORE」としてではなく、**新しい
+チェックポイントが来るたびに再評価するHOLDスコア的な用途**を想定している
+(`tests/test_weekly_scoring.py` の
+`test_ranking_and_momentum_cannot_distinguish_reversal_risk_at_monday_midday_close`
+参照)。
+
 週間値幅ランキング画像の読み取りは自動化しておらず、セッション(Claude)が画像を
 見て構造化データに変換し、`logic/weekly/`の各関数に渡す運用を前提としている。
 週次記録は `logic/weekly/store.py` でローカルJSONL(`data/weekly_records/`)に
@@ -78,7 +95,8 @@ stock_trading/
 │   │   │   └── order.py  # OrderProposal/PriceTiers/MarketRegime(v1.3・v2.1共通)
 │   │   └── weekly/       # v2.1(週間ランキング戦略)。v1.3とは独立
 │   │       ├── schema.py # A/B/C分類・FUTURE MFE SCORE・WeeklyRecord等
-│   │       ├── engine.py # market regime判定・スコア枠組み・MFE/MAE/CAPTURE RATE計算
+│   │       ├── engine.py # market regime判定・FUTURE MFE SCORE(3/7項目実装)・MFE/MAE/CAPTURE RATE計算
+│   │       ├── loader.py # ランキング画像から読み取ったJSON/dictをスキーマへ変換
 │   │       └── store.py  # WeeklyRecordのローカルJSONL永続化
 │   ├── notify/
 │   │   └── notifier.py   # Slack/LINE/Emailへの通知(要実装)
@@ -86,9 +104,11 @@ stock_trading/
 ├── scripts/
 │   └── run_daily.sh      # cron等から呼び出す実行スクリプト
 ├── tests/
-│   ├── test_indicators.py # テクニカル指標のユニットテスト
-│   ├── test_masa.py       # v1.3ゲート判定・CIO決裁書組み立てのユニットテスト
-│   └── test_weekly.py     # v2.1スコア定義・market regime・MFE/MAE等のユニットテスト
+│   ├── test_indicators.py     # テクニカル指標のユニットテスト
+│   ├── test_masa.py           # v1.3ゲート判定・CIO決裁書組み立てのユニットテスト
+│   ├── test_weekly.py         # v2.1スコア定義・market regime・MFE/MAE等のユニットテスト
+│   ├── test_weekly_loader.py  # v2.1ランキング画像JSONの読み込みユニットテスト
+│   └── test_weekly_scoring.py # v2.1 FUTURE MFE SCOREの実データ回帰テスト
 ├── data/                 # 取得データのキャッシュ置き場(gitignore対象)
 │   └── weekly_records/   # v2.1のWeeklyRecord JSONL保存先(gitignore対象)
 ├── logs/                 # ログ出力先(gitignore対象)
@@ -155,10 +175,13 @@ Slack/LINE/Emailで通知する場合は、リポジトリの Settings > Secrets
   取得元の実装、および取得データのローカルキャッシュ(`config.data.cache_dir`)の活用。
 - v2.19との連携: `config/watchlist.yaml` を v2.19 の FINAL RANKING 出力から
   自動生成する仕組み(現状は手動管理)。
-- `src/masa_trade/logic/weekly/engine.py` の `score_future_mfe()` /
-  `classify_stock_type()` / `select_winners()`: v2.1のFUTURE MFE SCOREの配点式・
-  A/B/C分類の境界・WINNER選定式(現状は原文に数値の明記がなくプレースホルダー)。
-  10〜20〜30回のAUTO検証を経てユーザーと一緒に数値化する予定。
+- `src/masa_trade/logic/weekly/engine.py` の `score_future_mfe()`: FUTURE MFE
+  SCOREの残り4項目(チャート/出来高15・CATALYST20・テーマ/市場資金10・
+  過去統計適合度10)。出来高・材料・テーマ・複数週の統計データが必要。
+- `classify_stock_type()` / `select_winners()`: A/B/C分類の境界・WINNER選定式
+  (現状は原文に数値の明記がなくプレースホルダー)。実装済みの3項目(ランキング
+  推移・上昇率加速度・過熱/下落リスク)だけでは月曜前引け時点での予測力が
+  不十分なことが実データで判明しているため、残り4項目が揃ってから着手する。
   `is_peak_out_warning()` の「複数成立」の具体的な閾値も同様に仮値(2件以上)。
 - v2.1の週間値幅ランキング画像を構造化データ(`RankingSnapshot`)に変換する
   仕組み(現状はセッション内でClaudeが画像を読んで手動で構築する運用)。

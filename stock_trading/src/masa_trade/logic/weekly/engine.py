@@ -14,13 +14,19 @@ v2.1はv1.3のjudge()を呼ばない(ユーザー指示により今回は完全�
 
 from __future__ import annotations
 
+from datetime import date
+
 from masa_trade.logic.common.order import MarketRegime
 from masa_trade.logic.weekly.schema import (
+    Checkpoint,
     ContinuationOverrideFlag,
     FutureMfeScore,
+    FutureMfeScoreItem,
     MarketRegimeInput,
     MfeMaeResult,
     PeakOutAssessment,
+    RankEntry,
+    RankHistory,
     StockType,
     WeeklyCandidate,
     WinnerSelection,
@@ -100,20 +106,211 @@ def compute_capture_rate(realized_return_pct: float, mfe_pct: float) -> float | 
 
 
 # ---------------------------------------------------------------------------
-# 【3.3タイプ分類】【10.FUTURE MFE SCORE】【11.MODEL/EXECUTABLE WINNER】
+# 【10.FUTURE MFE SCORE】
 #
-# TODO: 以下は原文に厳密な数値式がないため、スコア項目の器だけ用意し
-# points は算出しない(v1.3のscore_*()と同じ方針)。
-# A/B/C分類・WINNER選定の自動化は、実データでの検証を経てから実装する。
+# 2026-09-07(月)〜09-08(火)の実データ(50銘柄・6時点、rank + 上昇率)から
+# 逆算した配点式。実装できたのは「ランキング推移」「上昇率加速度」
+# 「過熱/下落リスク」の3項目(計45点)のみ。
+# 残り4項目(チャート/出来高・CATALYST・テーマ/市場資金・過去統計適合度)は
+# 出来高・材料・テーマ・複数週の統計データが未取得のため points=None のまま。
+#
+# 月曜_始まり値(OPEN)は全50銘柄が意味を持たない基準(-100%)から始まるため、
+# 以下のスコア計算は OPEN のチェックポイントを除外して行う。
+# ---------------------------------------------------------------------------
+
+
+def _real_moments(rank_history: RankHistory) -> list[tuple[date, Checkpoint, RankEntry]]:
+    """上昇率が実際に入っている時点だけを時系列で返す。
+
+    月曜始まり値(週の最初のOPEN)は全50銘柄が-100%の無意味な基準になるため
+    pct_change=Noneで記録される想定であり、その1点だけが自然に除外される。
+    火曜以降のOPEN(始まり値)には実際の上昇率が入るため除外しない
+    (Checkpointは曜日非依存なので、Checkpoint自体では月曜と火曜のOPENを区別できない)。
+    """
+    return [(d, cp, entry) for d, cp, entry in rank_history.ordered_entries if entry.pct_change is not None]
+
+
+def score_ranking_progression(rank_history: RankHistory | None) -> FutureMfeScoreItem:
+    """①ランキング推移(20点) = 最高到達順位(10点) + 順位安定性(10点)。
+
+    2026-09-07/08の実データでの根拠:
+        誠建設工業・オンコリスバイオ(継続成功)は最高到達順位1位・ドローダウン1で
+        満点20点になる一方、テラドローン・エプリー(前引け後に急落)は最高到達順位
+        3〜4位まで行きながらドローダウンが38〜42に達し、大きく減点される。
+    """
+    name = "ランキング推移"
+    if rank_history is None:
+        return FutureMfeScoreItem(name=name, max_points=20)
+
+    moments = _real_moments(rank_history)
+    if not moments:
+        return FutureMfeScoreItem(name=name, max_points=20)
+
+    ranks = [entry.rank for _, _, entry in moments]
+    best_rank, worst_rank = min(ranks), max(ranks)
+    drawdown = worst_rank - best_rank
+
+    if best_rank <= 3:
+        best_rank_score = 10.0
+    elif best_rank <= 10:
+        best_rank_score = 7.0
+    elif best_rank <= 20:
+        best_rank_score = 4.0
+    else:
+        best_rank_score = 0.0
+
+    if drawdown <= 2:
+        stability_score = 10.0
+    elif drawdown <= 9:
+        stability_score = 6.0
+    elif drawdown <= 19:
+        stability_score = 3.0
+    else:
+        stability_score = 0.0
+
+    return FutureMfeScoreItem(
+        name=name,
+        max_points=20,
+        points=best_rank_score + stability_score,
+        evidence=[
+            f"最高到達順位={best_rank}位",
+            f"ドローダウン={drawdown}位(最高{best_rank}位→最悪{worst_rank}位、OPEN除く)",
+        ],
+        confidence="中(2026-09-07/08の6時点データのみで導出。出来高等は未反映)",
+    )
+
+
+def score_momentum_acceleration(rank_history: RankHistory | None) -> FutureMfeScoreItem:
+    """②上昇率加速度(15点) = 直近時点の符号(8点) + セッション内最大下落幅(7点)。
+
+    2026-09-07/08の実データでの根拠:
+        テラドローン・エプリーは前引け→終値で上昇率がプラスからマイナスへ転落し
+        (それぞれ-14.7pt, -9.8ptの下落)、この項目が0点になる。オンコリスバイオは
+        同区間で-4.2ptの押しはあったがマイナス転落はしておらず、大きく減点されない。
+    """
+    name = "上昇率加速度"
+    if rank_history is None:
+        return FutureMfeScoreItem(name=name, max_points=15)
+
+    moments = _real_moments(rank_history)
+    if len(moments) < 2:
+        return FutureMfeScoreItem(name=name, max_points=15)
+
+    pcts = [entry.pct_change for _, _, entry in moments]
+    latest_pct = pcts[-1]
+    sign_score = 8.0 if latest_pct is not None and latest_pct >= 0 else 0.0
+
+    max_drop = max(0.0, max(pcts[i - 1] - pcts[i] for i in range(1, len(pcts))))
+    if max_drop <= 3:
+        drop_score = 7.0
+    elif max_drop <= 8:
+        drop_score = 4.0
+    else:
+        drop_score = 0.0
+
+    return FutureMfeScoreItem(
+        name=name,
+        max_points=15,
+        points=sign_score + drop_score,
+        evidence=[
+            f"直近上昇率={latest_pct}%",
+            f"セッション内最大下落幅={max_drop:.1f}pt",
+        ],
+        confidence="中(2026-09-07/08の6時点データのみで導出)",
+    )
+
+
+def score_overheat_risk(rank_history: RankHistory | None) -> FutureMfeScoreItem:
+    """⑥過熱/下落リスク(10点) = 満点から以下2条件それぞれで-5点。
+
+        (a) 上昇率がプラスからマイナスへ転落した時点がある
+        (b) 順位が10位以上悪化したあと10位以上回復し、その後また10位以上悪化する
+            (=一度戻したのに再び崩れる「往って来い」パターン)
+
+    2026-09-07/08の実データでの根拠:
+        テラドローン(順位 3→41→13→26)・エプリー(4→46→4→31)は(a)(b)両方に該当し0点。
+        誠建設工業・オンコリスバイオはどちらにも該当せず満点10点。
+
+    (b)は上昇率の反発幅ではなく順位の回復幅で判定する。テラドローンの実際の反発は
+    上昇率ベースだと+4.7pt(小さめの閾値だと拾えない)だが、順位ベースでは41位→13位
+    という明確な回復のため、こちらの方が実データに対して頑健。
+
+    注意: このロジックは「一度プラスだったのに崩れた」パターンのみを検出する。
+    ビーエイブル・チャットプラスのように最初から一貫して弱い銘柄は(a)(b)に
+    該当せずこの項目では減点されない(①ランキング推移側で低評価される設計)。
+    """
+    name = "過熱/下落リスク"
+    if rank_history is None:
+        return FutureMfeScoreItem(name=name, max_points=10)
+
+    moments = _real_moments(rank_history)
+    if len(moments) < 2:
+        return FutureMfeScoreItem(name=name, max_points=10)
+
+    pcts = [entry.pct_change for _, _, entry in moments]
+    ranks = [entry.rank for _, _, entry in moments]
+    points = 10.0
+    reasons: list[str] = []
+
+    if any(pcts[i - 1] > 0 and pcts[i] < 0 for i in range(1, len(pcts))):
+        points -= 5.0
+        reasons.append("上昇率がプラスからマイナスへ転落した時点がある")
+
+    rebound_then_fail = False
+    for i in range(1, len(ranks)):
+        improvement = ranks[i - 1] - ranks[i]  # 正なら順位が良くなった(数字が小さくなった)
+        if improvement < 10:
+            continue
+        recovered_rank = ranks[i]
+        if any(ranks[j] - recovered_rank >= 10 for j in range(i, len(ranks))):
+            rebound_then_fail = True
+            break
+    if rebound_then_fail:
+        points -= 5.0
+        reasons.append("順位が一度大きく回復したあと、再び大きく悪化した時点がある")
+
+    return FutureMfeScoreItem(
+        name=name,
+        max_points=10,
+        points=max(points, 0.0),
+        evidence=reasons or ["急落・反落パターンは検出されず"],
+        confidence="低(「一度プラスだった銘柄の崩れ」のみ検出する簡易ロジック)",
+    )
+
+
+# ---------------------------------------------------------------------------
+# 【3.3タイプ分類】【11.MODEL/EXECUTABLE WINNER】
+#
+# TODO: 以下は原文に厳密な数値式がないため、A/B/C分類・WINNER選定の自動化は
+# 実データでの検証を経てから実装する。
 # ---------------------------------------------------------------------------
 
 
 def score_future_mfe(candidate: WeeklyCandidate) -> FutureMfeScore:
-    score = empty_future_mfe_score()
+    base = empty_future_mfe_score()
+    computed = {
+        item.name: item
+        for item in (
+            score_ranking_progression(candidate.rank_history),
+            score_momentum_acceleration(candidate.rank_history),
+            score_overheat_risk(candidate.rank_history),
+        )
+    }
+    items = [computed.get(item.name, item) for item in base.items]
+
     return FutureMfeScore(
-        items=score.items,
-        max_score=score.max_score,
-        notes=["各項目の配点式はv2.1の実データ検証(10〜20〜30回)を経て確定する"],
+        items=items,
+        max_score=base.max_score,
+        notes=[
+            (
+                "「ランキング推移」「上昇率加速度」「過熱/下落リスク」の3項目(計45点)は"
+                "2026-09-07/08の実データから導いた配点式で算出。"
+            ),
+            (
+                "残り4項目(チャート/出来高・CATALYST・テーマ/市場資金・過去統計適合度)は"
+                "出来高・材料・テーマ・複数週の統計データが未取得のため未算出(points=None)。"
+            ),
+        ],
     )
 
 

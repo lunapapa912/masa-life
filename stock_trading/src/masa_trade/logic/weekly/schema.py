@@ -262,6 +262,11 @@ class RankHistory:
             (d, cp, self.entries_by_moment[(d, cp)].pct_change) for d, cp in self._ordered_moments()
         ]
 
+    @property
+    def ordered_entries(self) -> list[tuple[date, Checkpoint, RankEntry]]:
+        """時系列順のRankEntry一覧(スコア計算など、rank/pct_change以外の項目も要る場面用)。"""
+        return [(d, cp, self.entries_by_moment[(d, cp)]) for d, cp in self._ordered_moments()]
+
 
 # ---------------------------------------------------------------------------
 # 【7.CATALYST RADAR】【8.CATALYST TIMING】【9.GLOBAL INTELLIGENCE】
