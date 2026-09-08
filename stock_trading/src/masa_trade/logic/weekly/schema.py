@@ -62,18 +62,30 @@ __all__ = [
 
 
 # ---------------------------------------------------------------------------
-# 【29.画像受領時の自動動作】のタイミング区分
+# 【29.画像受領時の自動動作】のタイミング区分。
+#
+# 曜日は含めない(時間帯のみ)。実際にどの日のスナップショットかは
+# RankingSnapshot.captured_at の日付側で区別する。これにより月曜だけでなく
+# 火〜金の同じ時間帯のスナップショットも同じCheckpointで表せる。
 # ---------------------------------------------------------------------------
 
 
 class Checkpoint(str, Enum):
-    MONDAY_OPEN = "月曜_始まり値"
-    MONDAY_1030 = "月曜_10:30"
-    MONDAY_MIDDAY_CLOSE = "月曜_前引け"
-    AFTERNOON_1400 = "14:00"
+    OPEN = "始まり値"
+    MID_MORNING = "寄り後(10:30目安)"
+    MIDDAY_CLOSE = "前引け"
+    AFTERNOON = "14:00"
     CLOSE = "終値"
-    TUE_TO_FRI_DAILY = "火〜金"
-    FRIDAY_AUDIT = "金曜終了"
+
+
+# RankHistory.rank_sequence等を時系列で並べるための順序。
+_CHECKPOINT_ORDER: dict[Checkpoint, int] = {
+    Checkpoint.OPEN: 0,
+    Checkpoint.MID_MORNING: 1,
+    Checkpoint.MIDDAY_CLOSE: 2,
+    Checkpoint.AFTERNOON: 3,
+    Checkpoint.CLOSE: 4,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +228,7 @@ class RankEntry:
     price: float | None = None
     pct_change: float | None = None
     volume: float | None = None
-    checkpoint: Checkpoint = Checkpoint.MONDAY_OPEN
+    checkpoint: Checkpoint = Checkpoint.OPEN
     captured_at: datetime | None = None
 
 
@@ -231,19 +243,24 @@ class RankingSnapshot:
 
 @dataclass(frozen=True)
 class RankHistory:
-    """1銘柄について、複数時点のRankEntryをまとめたもの(RANK VELOCITY計算用)。"""
+    """1銘柄について、複数時点(日付×Checkpoint)のRankEntryをまとめたもの(RANK VELOCITY計算用)。"""
 
     name: str
     symbol: str | None = None
-    entries_by_checkpoint: dict[Checkpoint, RankEntry] = field(default_factory=dict)
+    entries_by_moment: dict[tuple[date, Checkpoint], RankEntry] = field(default_factory=dict)
+
+    def _ordered_moments(self) -> list[tuple[date, Checkpoint]]:
+        return sorted(self.entries_by_moment, key=lambda moment: (moment[0], _CHECKPOINT_ORDER[moment[1]]))
 
     @property
-    def rank_sequence(self) -> list[tuple[Checkpoint, int]]:
-        return [(cp, entry.rank) for cp, entry in self.entries_by_checkpoint.items()]
+    def rank_sequence(self) -> list[tuple[date, Checkpoint, int]]:
+        return [(d, cp, self.entries_by_moment[(d, cp)].rank) for d, cp in self._ordered_moments()]
 
     @property
-    def pct_change_sequence(self) -> list[tuple[Checkpoint, float | None]]:
-        return [(cp, entry.pct_change) for cp, entry in self.entries_by_checkpoint.items()]
+    def pct_change_sequence(self) -> list[tuple[date, Checkpoint, float | None]]:
+        return [
+            (d, cp, self.entries_by_moment[(d, cp)].pct_change) for d, cp in self._ordered_moments()
+        ]
 
 
 # ---------------------------------------------------------------------------

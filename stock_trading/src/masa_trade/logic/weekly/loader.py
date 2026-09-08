@@ -19,14 +19,13 @@ from masa_trade.logic.weekly.schema import (
 )
 
 # JSON側で使う短いcheckpointキー ⇔ Checkpoint enum の対応。
+# 曜日は含めない(時間帯のみ)。どの日かはcaptured_atの日付側で表す。
 CHECKPOINT_ALIASES: dict[str, Checkpoint] = {
-    "monday_open": Checkpoint.MONDAY_OPEN,
-    "monday_1030": Checkpoint.MONDAY_1030,
-    "monday_midday_close": Checkpoint.MONDAY_MIDDAY_CLOSE,
-    "afternoon_1400": Checkpoint.AFTERNOON_1400,
+    "open": Checkpoint.OPEN,
+    "mid_morning": Checkpoint.MID_MORNING,
+    "midday_close": Checkpoint.MIDDAY_CLOSE,
+    "afternoon_1400": Checkpoint.AFTERNOON,
     "close": Checkpoint.CLOSE,
-    "tue_to_fri": Checkpoint.TUE_TO_FRI_DAILY,
-    "friday_audit": Checkpoint.FRIDAY_AUDIT,
 }
 
 
@@ -61,15 +60,19 @@ def load_ranking_snapshot(data: dict[str, Any]) -> RankingSnapshot:
 
 
 def build_rank_histories(snapshots: list[RankingSnapshot]) -> dict[str, RankHistory]:
-    """複数時点のRankingSnapshotを、銘柄名をキーにしたRankHistoryへまとめる(RANK VELOCITY用)。"""
+    """複数時点のRankingSnapshotを、銘柄名をキーにしたRankHistoryへまとめる(RANK VELOCITY用)。
+
+    同じcheckpoint(例: "前引け")でも日付が違えば別の時点として記録する。
+    """
     histories: dict[str, RankHistory] = {}
     for snapshot in snapshots:
+        moment_date = snapshot.captured_at.date()
         for entry in snapshot.entries:
             history = histories.get(entry.name)
             if history is None:
                 history = RankHistory(name=entry.name, symbol=entry.symbol)
                 histories[entry.name] = history
-            history.entries_by_checkpoint[snapshot.checkpoint] = entry
+            history.entries_by_moment[(moment_date, snapshot.checkpoint)] = entry
     return histories
 
 
