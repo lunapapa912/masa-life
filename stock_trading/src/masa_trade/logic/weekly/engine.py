@@ -20,6 +20,7 @@ from masa_trade.logic.common.order import MarketRegime
 from masa_trade.logic.weekly.schema import (
     Checkpoint,
     ContinuationOverrideFlag,
+    ContinuationTrapFlag,
     DisclosureRecord,
     FutureMfeScore,
     FutureMfeScoreItem,
@@ -67,6 +68,17 @@ def classify_market_regime(data: MarketRegimeInput) -> MarketRegime:
 
 def applies_continuation_override(flags: list[ContinuationOverrideFlag]) -> bool:
     return len(set(flags)) >= 3
+
+
+# ---------------------------------------------------------------------------
+# 【5.CONTINUATION TRAP CONTROL】原文は「複数該当したら」とあるのみで具体的な
+# 件数の明記がない。is_peak_out_warning()と同様、保守的に2件以上を暫定閾値
+# とする(TODO: 実データで調整)。
+# ---------------------------------------------------------------------------
+
+
+def is_suspected_trap(flags: list[ContinuationTrapFlag]) -> bool:
+    return len(set(flags)) >= 2
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +141,12 @@ def _real_moments(rank_history: RankHistory) -> list[tuple[date, Checkpoint, Ran
     (Checkpointは曜日非依存なので、Checkpoint自体では月曜と火曜のOPENを区別できない)。
     """
     return [(d, cp, entry) for d, cp, entry in rank_history.ordered_entries if entry.pct_change is not None]
+
+
+def _item_points(score: FutureMfeScore, name: str) -> float | None:
+    """FutureMfeScoreから項目名でpointsを取り出す(classify_stock_type/
+    continuation_override/trap_control/select_winnersが共通で使う)。"""
+    return next((item.points for item in score.items if item.name == name), None)
 
 
 def score_ranking_progression(rank_history: RankHistory | None) -> FutureMfeScoreItem:
@@ -565,10 +583,169 @@ def score_historical_fit() -> FutureMfeScoreItem:
 
 
 # ---------------------------------------------------------------------------
-# 【3.3タイプ分類】【11.MODEL/EXECUTABLE WINNER】
+# 【4.CONTINUATION OVERRIDE】【5.CONTINUATION TRAP CONTROL】
 #
-# TODO: 以下は原文に厳密な数値式がないため、A/B/C分類・WINNER選定の自動化は
-# 実データでの検証を経てから実装する。
+# 新規データソースを追加せず、既存のFutureMfeScore(①〜⑦)とrank_historyの
+# 組み合わせだけで、各項目を近似的に検出する。原文が要求する項目のうち、
+# ザラ場の値動き(高値・安値・VWAP・板情報)が必要なもの(CONTINUATION TRAP
+# CONTROLの大幅GU後の失速・長い上ヒゲ・VWAP大幅乖離・高値更新失敗・
+# 板が薄すぎる・R/R不足の6項目)はデータソース未確保のため対象外とする
+# (README「今後実装が必要な部分」参照)。
+# ---------------------------------------------------------------------------
+
+
+def _trim_to_previous_real_moment(rank_history: RankHistory) -> RankHistory:
+    """直近の実データ時点を1つ取り除いた過去のRankHistory(トレンド比較用)。
+
+    trap_control()の「直近で急低下/低下傾向」判定のために、「1時点前まで
+    ならスコアがいくつだったか」を再計算する目的でのみ使う。
+    """
+    moments = _real_moments(rank_history)
+    if len(moments) < 2:
+        return RankHistory(name=rank_history.name, symbol=rank_history.symbol, entries_by_moment={})
+    entries = {(d, cp): entry for d, cp, entry in moments[:-1]}
+    return RankHistory(name=rank_history.name, symbol=rank_history.symbol, entries_by_moment=entries)
+
+
+def detect_continuation_override_flags(candidate: WeeklyCandidate) -> list[ContinuationOverrideFlag]:
+    """【4.CONTINUATION OVERRIDE】7項目のうち、既存データ(rank_historyと
+    FutureMfeScore)から近似できるものを検出する。新規データソースは追加しない。
+
+    近似方法(各項目とも、呼び出し時点までのデータのみを使う。
+    LOOK-AHEAD BIAS禁止, v2.1 §26):
+        ①順位維持/上昇: 直近順位が、これまでの最高到達順位から2位以内に
+            収まっているか(僅かな順位変動は「維持」とみなす)。
+        ②上昇率加速: score_momentum_acceleration()が12点以上
+            (符号プラス、かつセッション内最大下落幅が3pt以下)。
+        ③出来高拡大: score_stop_high_lock_proxy()が満点15点
+            (上位順位での上昇率凍結=ストップ高で売買不成立の可能性、を代理指標とする)。
+        ④強い材料/テーマ: score_catalyst_strength()とscore_theme_market_flow()の
+            合計が25点以上(両方とも中立基準点である合計15点を明確に上回る水準)。
+        ⑤高値更新: 直近チェックポイントのpct_changeが、それ以前の全時点の
+            最大値以上か。
+        ⑥相対強度上昇: 直近チェックポイントの順位が、その直前の時点より
+            悪化していないか(①が「これまでの最高値との比較」であるのに対し、
+            こちらは「直前時点との比較」)。
+        ⑦押しても崩れない: score_momentum_acceleration()の算出過程と同じ
+            「セッション内最大下落幅」が3pt以下か(専用の再計算はせず流用)。
+    """
+    flags: list[ContinuationOverrideFlag] = []
+    rank_history = candidate.rank_history
+    moments = _real_moments(rank_history) if rank_history is not None else []
+
+    if moments:
+        ranks = [entry.rank for _, _, entry in moments]
+        pcts = [entry.pct_change for _, _, entry in moments]
+
+        if ranks[-1] <= min(ranks) + 2:
+            flags.append(ContinuationOverrideFlag.RANK_MAINTAINED_OR_UP)
+
+        if len(ranks) >= 2 and ranks[-1] <= ranks[-2]:
+            flags.append(ContinuationOverrideFlag.RELATIVE_STRENGTH_UP)
+
+        if len(pcts) >= 2 and pcts[-1] >= max(pcts[:-1]):
+            flags.append(ContinuationOverrideFlag.NEW_HIGH)
+
+        if len(pcts) >= 2:
+            max_drop = max(0.0, max(pcts[i - 1] - pcts[i] for i in range(1, len(pcts))))
+            if max_drop <= 3.0:
+                flags.append(ContinuationOverrideFlag.HOLDS_ON_DIPS)
+
+    momentum_score = score_momentum_acceleration(rank_history).points
+    if momentum_score is not None and momentum_score >= 12:
+        flags.append(ContinuationOverrideFlag.MOMENTUM_ACCELERATING)
+
+    volume_score = score_stop_high_lock_proxy(rank_history).points
+    if volume_score is not None and volume_score >= 15:
+        flags.append(ContinuationOverrideFlag.VOLUME_EXPANDING)
+
+    catalyst_score = score_catalyst_strength(candidate.disclosures).points
+    theme_score = score_theme_market_flow(candidate.sector, candidate.top20_sector_peers).points
+    if catalyst_score is not None and theme_score is not None and catalyst_score + theme_score >= 25:
+        flags.append(ContinuationOverrideFlag.STRONG_MATERIAL_THEME)
+
+    return flags
+
+
+def continuation_override(candidate: WeeklyCandidate) -> tuple[bool, list[ContinuationOverrideFlag]]:
+    """【4.CONTINUATION OVERRIDE】7項目中3項目以上該当なら、既に上昇した量による
+    除外(過熱ペナルティ)を弱めるフラグを立てる。
+
+    戻り値は (該当するか, 該当した項目のリスト)。
+    """
+    flags = detect_continuation_override_flags(candidate)
+    return applies_continuation_override(flags), flags
+
+
+def detect_continuation_trap_flags(candidate: WeeklyCandidate) -> list[ContinuationTrapFlag]:
+    """【5.CONTINUATION TRAP CONTROL】偽Continuation警告サインのうち、
+    新規データソースなしで既存データから近似できる4項目を検出する。
+
+    近似方法(いずれも呼び出し時点までのデータのみを使う。
+    LOOK-AHEAD BIAS禁止, v2.1 §26):
+        出来高ピークアウト: 直近1時点前までのscore_stop_high_lock_proxy()と
+            直近時点までのそれを比較し、10点以上急低下していないか。
+        上昇率減速: 直近1時点前までのscore_momentum_acceleration()と
+            直近時点までのそれを比較し、点数が下がっていないか。
+        順位低下: 直近チェックポイントの順位が、その直前の時点より
+            悪化していないか。
+        材料出尽くし: candidate.disclosuresが空、または最新の開示日が
+            直近チェックポイントの日付より前(=当日に出た新しい材料ではない)か。
+    """
+    flags: list[ContinuationTrapFlag] = []
+    rank_history = candidate.rank_history
+    moments = _real_moments(rank_history) if rank_history is not None else []
+
+    if len(moments) >= 2:
+        previous_history = _trim_to_previous_real_moment(rank_history)
+
+        current_volume_score = score_stop_high_lock_proxy(rank_history).points
+        previous_volume_score = score_stop_high_lock_proxy(previous_history).points
+        if (
+            current_volume_score is not None
+            and previous_volume_score is not None
+            and previous_volume_score - current_volume_score >= 10
+        ):
+            flags.append(ContinuationTrapFlag.VOLUME_PEAK_OUT)
+
+        current_momentum_score = score_momentum_acceleration(rank_history).points
+        previous_momentum_score = score_momentum_acceleration(previous_history).points
+        if (
+            current_momentum_score is not None
+            and previous_momentum_score is not None
+            and current_momentum_score < previous_momentum_score
+        ):
+            flags.append(ContinuationTrapFlag.MOMENTUM_DECELERATION)
+
+        latest_rank = moments[-1][2].rank
+        previous_rank = moments[-2][2].rank
+        if latest_rank > previous_rank:
+            flags.append(ContinuationTrapFlag.RANK_DECLINE)
+
+    latest_date = moments[-1][0] if moments else None
+    if not candidate.disclosures:
+        flags.append(ContinuationTrapFlag.MATERIAL_EXHAUSTED)
+    elif latest_date is not None:
+        latest_disclosure_date = max(record.pubdate.date() for record in candidate.disclosures)
+        if latest_disclosure_date < latest_date:
+            flags.append(ContinuationTrapFlag.MATERIAL_EXHAUSTED)
+
+    return flags
+
+
+def trap_control(candidate: WeeklyCandidate) -> tuple[bool, list[ContinuationTrapFlag]]:
+    """【5.CONTINUATION TRAP CONTROL】偽Continuation警告サインが複数(2項目以上)
+    該当する場合、continuation_override()を実質的に無効化するSUSPECTED_TRAP
+    判定を行う。
+
+    戻り値は (SUSPECTED_TRAPか, 該当した項目のリスト)。
+    """
+    flags = detect_continuation_trap_flags(candidate)
+    return is_suspected_trap(flags), flags
+
+
+# ---------------------------------------------------------------------------
+# 【3.3タイプ分類】【11.MODEL/EXECUTABLE WINNER】
 # ---------------------------------------------------------------------------
 
 
@@ -616,19 +793,101 @@ def score_future_mfe(candidate: WeeklyCandidate) -> FutureMfeScore:
     )
 
 
-def classify_stock_type(candidate: WeeklyCandidate) -> StockType | None:
-    """A(CONTINUATION)/B(MAIN EARLY)/C(CATALYST EARLY)の分類。
+def _latest_real_entry(rank_history: RankHistory | None) -> RankEntry | None:
+    if rank_history is None:
+        return None
+    moments = _real_moments(rank_history)
+    if not moments:
+        return None
+    return moments[-1][2]
 
-    原文の「6〜20位」「+0.5〜+3%」等は目安であり厳密な境界式ではないため、
-    誤判定を招く決め打ちルールは実装しない。現状は常にNone(未分類)を返す。
+
+def classify_stock_type(candidate: WeeklyCandidate) -> StockType | None:
+    """A(CONTINUATION)/B(MAIN EARLY)/C(CATALYST EARLY)の分類(【3.3タイプ分類】)。
+
+    原文の「概ね」という表現どおり、順位の厳密なカットオフではなく、直近順位と
+    FUTURE MFE SCOREの該当項目を組み合わせて判定する。A→B→Cの順に判定し、
+    最初に該当した1つを採用する(いずれにも該当しなければNone)。
+
+        タイプA: 直近順位が10位以内、かつ①ランキング推移が15点以上
+            (上位を維持)、かつ②上昇率加速度が8点以上(符号プラス方向)。
+        タイプB: 直近順位が6〜20位、かつ直近の上昇率が+0.5〜+5.0%
+            (緩やかな上昇)、かつ⑥過熱/下落リスクが10点(満点、
+            過熱・崩れの兆候なし)。
+        タイプC: 直近順位が20位以上、かつ④CATALYSTが15点以上
+            (好材料の開示あり)、かつ直近の上昇率が+3.0%以下
+            (値動きは弱い、またはデータなし)。
     """
+    latest = _latest_real_entry(candidate.rank_history)
+    if latest is None:
+        return None
+
+    score = score_future_mfe(candidate)
+    ranking_score = _item_points(score, "ランキング推移")
+    momentum_score = _item_points(score, "上昇率加速度")
+    overheat_score = _item_points(score, "過熱/下落リスク")
+    catalyst_score = _item_points(score, "CATALYST")
+    pct = latest.pct_change
+
+    if (
+        latest.rank <= 10
+        and ranking_score is not None
+        and ranking_score >= 15
+        and momentum_score is not None
+        and momentum_score >= 8
+    ):
+        return StockType.A_CONTINUATION
+
+    if (
+        6 <= latest.rank <= 20
+        and pct is not None
+        and 0.5 <= pct <= 5.0
+        and overheat_score is not None
+        and overheat_score >= 10
+    ):
+        return StockType.B_MAIN_EARLY
+
+    if (
+        latest.rank >= 20
+        and catalyst_score is not None
+        and catalyst_score >= 15
+        and (pct is None or pct <= 3.0)
+    ):
+        return StockType.C_CATALYST_EARLY
+
     return None
 
 
 def select_winners(candidates: list[WeeklyCandidate]) -> WinnerSelection:
-    """MODEL WINNER/EXECUTABLE WINNER/次点2枠を選ぶ。
+    """【11.MODEL WINNER/EXECUTABLE WINNER】その週の候補からMODEL WINNER・
+    EXECUTABLE WINNER・次点2枠を選ぶ。
 
-    TODO: FUTURE MFE SCOREの配点式(score_future_mfe)が未実装のため、
-    現状はスコアに基づく自動選定ができない。空のWinnerSelectionを返す。
+    MODEL WINNER: 資金制約を無視し、FutureMfeScore.totalが最大の1銘柄。
+    EXECUTABLE WINNER: 「チャート/出来高」が満点15点(score_stop_high_lock_proxy
+    がストップ高固着=買い注文が約定しない可能性が高いと判定した状態)の銘柄を
+    除外した上で、totalが最大の1銘柄。
+
+    絶対株価・資金量データ(週間ランキング画像には含まれない)がないため、
+    100株必要資金等を踏まえた精密な実行可能性判定は対象外
+    (README「今後実装が必要な部分」参照)。totalが算出できない
+    (rank_historyが一切ない)候補は選定対象から除外する。
     """
-    return WinnerSelection()
+    scored = [(candidate, score_future_mfe(candidate)) for candidate in candidates]
+    computable = [(c, s) for c, s in scored if s.total is not None]
+    if not computable:
+        return WinnerSelection()
+
+    ranked = sorted(computable, key=lambda pair: pair[1].total, reverse=True)
+    model_winner = ranked[0][0]
+
+    executable_ranked = [(c, s) for c, s in ranked if _item_points(s, "チャート/出来高") != 15]
+    executable_winner = executable_ranked[0][0] if executable_ranked else None
+
+    runner_ups = [c for c, _ in ranked if c is not model_winner][:2]
+
+    return WinnerSelection(
+        model_winner=model_winner,
+        executable_winner=executable_winner,
+        runner_up_1=runner_ups[0] if len(runner_ups) >= 1 else None,
+        runner_up_2=runner_ups[1] if len(runner_ups) >= 2 else None,
+    )

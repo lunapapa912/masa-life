@@ -140,11 +140,43 @@ JSON Lines形式で追記していく。独立フィールドにしているの�
 これで**FUTURE MFE SCOREの①〜⑦全7項目が実装済み**になった(データが揃わない
 場合の中立基準点フォールバックを含め、100点満点の"器"は完成)。
 うち④CATALYST・⑤テーマ/市場資金・⑦過去統計適合度は、対象銘柄によっては
-中立基準点にとどまる(開示なし・業種不明・ログ不足の場合)。残るタスクは
-**②6ゲート相当のフラグ判定の自動化**(CONTINUATION OVERRIDE/TRAP CONTROL/
-PEAK-OUT WARNING等)のみ。
-**数値の明記がない部分**(A/B/C分類の境界、MODEL/EXECUTABLE WINNERの選定式、
-PEAK-OUT WARNINGの具体的な組み合わせ数)はTODOのプレースホルダー。
+中立基準点にとどまる(開示なし・業種不明・ログ不足の場合)。
+
+さらに、【3.3タイプ分類】(`classify_stock_type()`)・【4.CONTINUATION
+OVERRIDE】(`continuation_override()`)・【5.CONTINUATION TRAP CONTROL】
+(`trap_control()`)・【11.MODEL WINNER/EXECUTABLE WINNER】(`select_winners()`)
+を、新規データソースを追加せず既存のFUTURE MFE SCORE(①〜⑦)とrank_historyの
+組み合わせだけで実装した(`tests/test_weekly_classification.py`)。
+
+- `classify_stock_type()`: 直近順位とFUTURE MFE SCOREの該当項目を組み合わせて
+  A(CONTINUATION)/B(MAIN EARLY)/C(CATALYST EARLY)を判定する。実データでは
+  誠建設工業・オンコリスバイオがタイプAに分類される一方、テラドローン・
+  エプリー(崩落後)・古林紙工(順位が低すぎる)はいずれの型にも綺麗には
+  当てはまらずNoneになった(タイプB/Cは対象5銘柄に実例がないため合成データで
+  単体テストしている)。
+- `continuation_override()` / `trap_control()`: 原文の7項目/10項目のうち、
+  既存データから近似できるものだけを検出する(残りはザラ場の高値・安値・
+  VWAP・板情報が必要でデータソース未確保のため対象外。後述のTODO参照)。
+  **実データでの検証**: 誠建設工業(1位維持・ストップ高疑い)は
+  `continuation_override`該当・`trap_control`非該当となり、テラドローン
+  (一度上位→崩落)は`trap_control`(順位低下+材料出尽くし該当)が
+  トリガーされた — これまでの分析結果(継続成功と急落の分岐点)と整合する
+  結果が得られた。一方で**正直な報告として**、古林紙工(順位24〜30位台の
+  低迷銘柄)も上昇率が完全凍結しているため一部フラグが偶然成立し、
+  `continuation_override`が該当してしまう限界も見つかった(このロジックは
+  順位の絶対水準を①ランキング推移スコア以外では直接見ていないため、
+  「順位が高い凍結銘柄」と「順位が低い凍結銘柄」を単体では区別できない)。
+- `select_winners()`: `FutureMfeScore.total`が最大の銘柄をMODEL WINNERとし、
+  「チャート/出来高」が満点(ストップ高固着で買い注文が約定しない可能性)の
+  銘柄を除外した上でEXECUTABLE WINNERを選ぶ。実データでは誠建設工業
+  (80点、ストップ高疑いで除外)がMODEL WINNER、オンコリスバイオ(61点)が
+  EXECUTABLE WINNERとなり、異なる銘柄として両方記録された。絶対株価・資金量
+  データがないため、100株必要資金等を踏まえた精密な実行可能性判定は対象外
+  (TODO参照)。
+
+残るタスクは**PEAK-OUT WARNING(保有中の利確判定)の自動化**と、
+**continuation_override/trap_controlの未対応項目(ザラ場の値動きデータが
+必要なもの)**のみ。
 
 重要な設計上の知見: 実データ検証で、「ランキング推移」「上昇率加速度」
 「過熱/下落リスク」の3項目は**月曜前引け時点で入手可能なデータだけでは
@@ -199,7 +231,8 @@ stock_trading/
 │   ├── test_weekly_scoring.py # v2.1 FUTURE MFE SCOREの実データ回帰テスト
 │   ├── test_weekly_tdnet.py   # TDnet開示取得(やのしんAPI)のモックテスト
 │   ├── test_weekly_sector.py  # JPX業種マスタのパース・名寄せのユニットテスト
-│   └── test_weekly_history_log.py # 週次スコアログ(history_log.py)のユニットテスト
+│   ├── test_weekly_history_log.py # 週次スコアログ(history_log.py)のユニットテスト
+│   └── test_weekly_classification.py # タイプ分類・OVERRIDE/TRAP・WINNER選定のユニットテスト
 ├── data/                 # 取得データのキャッシュ置き場(gitignore対象)
 │   └── weekly_records/   # v2.1のWeeklyRecord JSONL保存先(gitignore対象)
 ├── logs/                 # ログ出力先(gitignore対象)
@@ -296,16 +329,30 @@ Slack/LINE/Emailで通知する場合は、リポジトリの Settings > Secrets
   直前終値・当日終値から`get_price_limit_width(base_price)`(JPX公式の
   制限値幅表を実装する関数、2026-09-04時点の値を確認済み)経由で判定する
   という経路が使える見込み。
-- `classify_stock_type()` / `select_winners()`: A/B/C分類の境界・WINNER選定式
-  (現状は原文に数値の明記がなくプレースホルダー)。FUTURE MFE SCOREの①〜⑦は
-  全項目実装済み(うち④CATALYST・⑤テーマ/市場資金・⑦過去統計適合度は
-  データ不足時に中立基準点へフォールバックする設計)になったが、これは
-  「100点満点を必ず算出できる」ことを意味するだけで、その配点の閾値・
-  重み付けが月曜前引け時点での実際の予測力(誰がMODEL WINNER/EXECUTABLE
-  WINNERになるか)を正しく反映しているかはまだ検証できていない。
-  `history_log.py` に複数週分のログが蓄積され、実際の勝敗パターンとの
-  突き合わせができるようになってから着手する。
-  `is_peak_out_warning()` の「複数成立」の具体的な閾値も同様に仮値(2件以上)。
+- `classify_stock_type()` / `continuation_override()` / `trap_control()` /
+  `select_winners()`: 実装済みだが、いずれも既存データ(FUTURE MFE SCOREと
+  rank_history)からの近似ロジックであり、閾値(タイプA/Bの順位帯・上昇率の
+  範囲、continuation_overrideの各項目の点数閾値等)は原文に数値の明記が
+  ないため暫定値。`history_log.py`に複数週分のログが蓄積され、実際の
+  勝敗パターンとの突き合わせができるようになってから、閾値の妥当性を
+  検証・調整する。既知の限界(実データで確認済み): `continuation_override()`は
+  順位の絶対水準を①ランキング推移スコア以外では直接見ていないため、
+  上昇率が完全凍結しているだけの低順位銘柄(実データの古林紙工、順位
+  24〜30位台)でも該当してしまうことがある。
+- `continuation_override()` / `trap_control()`は、ザラ場の高値・安値・VWAP・
+  板情報が必要な項目には未対応。具体的には、CONTINUATION OVERRIDEの
+  「出来高拡大」はストップ高固定プロキシによる代理指標のみで正式な出来高
+  データではなく、CONTINUATION TRAP CONTROLの10項目のうち「大幅GU後の失速」
+  「長い上ヒゲ」「VWAP大幅乖離」「高値更新失敗」「板が薄すぎる」「R/R不足」の
+  6項目はデータソース未確保のため対象外。これらのデータが無料で確保でき次第、
+  拡張する。
+- 【17.PEAK-OUT WARNING】(保有中の利確判定)の自動化: 月曜前引け時点の
+  選定ロジックとは性質が異なるため今回のスコープ外。`is_peak_out_warning()`
+  の「複数成立」の具体的な閾値も同様に仮値(2件以上)のまま。
+- `select_winners()`のEXECUTABLE WINNER判定: 絶対株価・資金量データが
+  取得可能になり次第、100株必要資金等を踏まえた精密な実行可能性判定に
+  拡張する(現状は「チャート/出来高」が満点=ストップ高固着の可能性、という
+  簡易フィルタのみ)。
 - `score_theme_market_flow()` は「業種集中度」のみを見ており、個別テーマ
   (AI関連・半導体関連等の思惑ベースの括り)には対応していない。みんかぶ・株探は
   利用規約(「加工・再利用」の禁止)により不採用にしたため、将来的に規約準拠の
