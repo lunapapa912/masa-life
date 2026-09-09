@@ -1,0 +1,75 @@
+# MASA式 売買判定ロジック 全体設定
+# 環境ごとに変える値は .env / 環境変数から読み込み、ここには「ロジックのパラメータ」だけを置く。
+
+app:
+  timezone: "Asia/Tokyo"
+  # 判定を実行する市場の取引時間(参考値。実行スケジュール自体は cron / GitHub Actions 側で管理)
+  market_close_time: "15:00"
+
+data:
+  # 株価データの取得元。今はyfinanceのみ対応。
+  source: "yfinance"
+  # 判定に使うローソク足の間隔
+  interval: "1d"
+  # 何営業日分のヒストリカルデータを取得するか
+  lookback_days: 250
+  # 取得したCSVキャッシュの保存先(このファイルからの相対パス)
+  cache_dir: "../data"
+
+masa_logic:
+  # チャートデータ(短期ENTRYスコアの材料)を作るためのテクニカル指標パラメータ。
+  moving_averages:
+    short: 5
+    medium: 25
+    long: 75
+  volume_spike_ratio: 2.0      # 出来高が平均の何倍で「急増」とみなすか
+  volume_average_window: 20    # 出来高の平均を取る日数
+  rsi_period: 14
+  rsi_overbought: 70
+  rsi_oversold: 30
+
+# まー式 統合運用プロンプト v1.3(6ゲート判定・3スコア・CIO決裁書)向けの設定。
+# v2.19(ZERO-BASE DISCOVERY等による日次スクリーニング)には一切影響しない。
+# 閾値は全て仮値。v1.3の詳細ルールが確定次第、正式な値に差し替える。
+cio_review:
+  # v1.3の3モード。C=個別精査をデフォルトにしておく。
+  default_mode: "C"
+
+  gates:
+    dilution:
+      # これを超える想定希薄化率でFAIL(仮値。G2 大規模希薄化)
+      max_acceptable_ratio_pct: 10.0
+    pricing_in:
+      # 材料発表から lookback_days 以内に、株価が既にこの%以上動いていたらFAIL(仮値。G5 株価への織込み)
+      already_priced_in_pct: 15.0
+      lookback_days: 5
+    short_term_catalyst:
+      # G6は「今後1〜3営業日の短期カタリスト」が原文の定義。ここを変えるとG6の意味がズレる。
+      max_days_ahead: 3
+
+  gate_policy:
+    # 重大FAIL(critical=true)は無条件でAVOID。それ以外のFAILも現状はAVOID扱い(仮)。
+    fail_is_veto: true
+    # いずれかのゲートがUNKNOWN(データ不足)ならENTRY/WATCHを出さずWAITにするか
+    pending_blocks_execute: true
+
+  decision_thresholds:
+    # 3スコア合計(300点満点)がこれ以上でENTRY(仮値。v1.3原文に数値境界の明記なし)
+    entry_min_total_score: 210
+    # 3スコア合計がこれ以上でWATCH継続(仮値)
+    watch_min_total_score: 150
+
+notify:
+  enabled: true
+  # 通知先チャネル。必要なものだけ有効化し、認証情報は .env で渡す。
+  channels:
+    slack: false
+    line: false
+    email: false
+
+logging:
+  level: "INFO"
+  dir: "../logs"
+  filename: "masa_trade.log"
+  max_bytes: 1048576
+  backup_count: 7

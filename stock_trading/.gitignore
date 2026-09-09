@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# 環境変数・秘密情報
+.env
+
+# 実行時に生成されるデータ・ログ(ディレクトリ自体は .gitkeep で保持)
+data/*
+!data/.gitkeep
+!data/weekly_records/
+data/weekly_records/*
+!data/weekly_records/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# テスト・キャッシュ
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
